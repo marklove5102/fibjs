@@ -19,7 +19,9 @@ public:
     ~psql()
     {
         if (m_conn)
-            asyncCall(odbc_disconnect, m_conn);
+            async([conn = m_conn]() {
+                odbc_disconnect(conn);
+            });
     }
 
 public:
@@ -37,7 +39,7 @@ public:
 
     virtual result_t execute(exlib::string sql, obj_ptr<NArray>& retVal, AsyncEvent* ac)
     {
-        return odbc_execute(m_conn, sql, retVal, ac, m_codec);
+        return odbc_execute(m_conn, sql, retVal, ac);
     }
 
 public:
@@ -84,6 +86,7 @@ public:
             "REAL",
             "FLOAT",
             "TIMESTAMP",
+            "VARCHAR",
             "TEXT",
             "BYTEA",
             "BYTEA"

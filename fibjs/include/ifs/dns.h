@@ -32,6 +32,9 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<dns_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_lookup(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -65,9 +68,9 @@ inline void dns_base::s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<NArray> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -83,9 +86,9 @@ inline void dns_base::s_static_lookup(const v8::FunctionCallbackInfo<v8::Value>&
 {
     exlib::string vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 

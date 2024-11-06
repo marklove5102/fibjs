@@ -28,11 +28,11 @@ public:
     virtual result_t set() = 0;
     virtual result_t pulse() = 0;
     virtual result_t clear() = 0;
-    virtual result_t wait() = 0;
+    virtual result_t wait(AsyncEvent* ac) = 0;
 
 public:
-    template <typename T>
-    static void __new(const T& args);
+    static void __new(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Event_base>& retVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -41,6 +41,9 @@ public:
     static void s_pulse(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_clear(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_wait(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+public:
+    ASYNC_MEMBER0(Event_base, wait);
 };
 }
 
@@ -52,14 +55,14 @@ inline ClassInfo& Event_base::class_info()
         { "set", s_set, false, ClassData::ASYNC_SYNC },
         { "pulse", s_pulse, false, ClassData::ASYNC_SYNC },
         { "clear", s_clear, false, ClassData::ASYNC_SYNC },
-        { "wait", s_wait, false, ClassData::ASYNC_SYNC }
+        { "wait", s_wait, false, ClassData::ASYNC_ASYNC }
     };
 
     static ClassData s_cd = {
         "Event", false, s__new, NULL,
         ARRAYSIZE(s_method), s_method, 0, NULL, 0, NULL, 0, NULL, NULL, NULL,
         &Lock_base::class_info(),
-        false
+        true
     };
 
     static ClassInfo s_ci(s_cd);
@@ -72,8 +75,7 @@ inline void Event_base::s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
     __new(args);
 }
 
-template <typename T>
-void Event_base::__new(const T& args)
+inline void Event_base::__new(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     obj_ptr<Event_base> vr;
 
@@ -86,6 +88,21 @@ void Event_base::__new(const T& args)
     hr = _new(v0, vr, args.This());
 
     CONSTRUCT_RETURN();
+}
+
+inline result_t Event_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Event_base>& retVal)
+{
+    obj_ptr<Event_base> vr;
+
+    LOAD_ENTER();
+
+    METHOD_OVER(1, 0);
+
+    OPT_ARG(bool, 0, false);
+
+    hr = _new(v0, vr, args.This());
+
+    LOAD_RETURN();
 }
 
 inline void Event_base::s_isSet(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -140,12 +157,15 @@ inline void Event_base::s_clear(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 inline void Event_base::s_wait(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_INSTANCE(Event_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_INSTANCE(Event_base);
+    ASYNC_METHOD_ENTER();
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->wait();
+    if (!cb.IsEmpty())
+        hr = pInst->acb_wait(cb, args);
+    else
+        hr = pInst->ac_wait();
 
     METHOD_VOID();
 }

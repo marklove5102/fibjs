@@ -60,7 +60,7 @@ public:
     static result_t set_http_proxy(exlib::string newVal);
     static result_t get_https_proxy(exlib::string& retVal);
     static result_t set_https_proxy(exlib::string newVal);
-    static result_t fileHandler(exlib::string root, v8::Local<v8::Object> mimes, bool autoIndex, obj_ptr<Handler_base>& retVal);
+    static result_t fileHandler(exlib::string root, bool autoIndex, obj_ptr<Handler_base>& retVal);
     static result_t request(Stream_base* conn, HttpRequest_base* req, obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac);
     static result_t request(Stream_base* conn, HttpRequest_base* req, SeekableStream_base* response_body, obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac);
     static result_t request(exlib::string method, exlib::string url, v8::Local<v8::Object> opts, obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac);
@@ -81,6 +81,9 @@ public:
         isolate->m_isolate->ThrowException(
             isolate->NewString("not a constructor"));
     }
+
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<http_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
 
 public:
     static void s_static_get_STATUS_CODES(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -571,13 +574,12 @@ inline void http_base::s_static_fileHandler(const v8::FunctionCallbackInfo<v8::V
 
     METHOD_ENTER();
 
-    METHOD_OVER(3, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
-    OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
-    OPT_ARG(bool, 2, false);
+    OPT_ARG(bool, 1, false);
 
-    hr = fileHandler(v0, v1, v2, vr);
+    hr = fileHandler(v0, v1, vr);
 
     METHOD_RETURN();
 }
@@ -586,9 +588,9 @@ inline void http_base::s_static_request(const v8::FunctionCallbackInfo<v8::Value
 {
     obj_ptr<HttpResponse_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(obj_ptr<Stream_base>, 0);
     ARG(obj_ptr<HttpRequest_base>, 1);
@@ -598,7 +600,7 @@ inline void http_base::s_static_request(const v8::FunctionCallbackInfo<v8::Value
     else
         hr = ac_request(v0, v1, vr);
 
-    ASYNC_METHOD_OVER(3, 3);
+    METHOD_OVER(3, 3);
 
     ARG(obj_ptr<Stream_base>, 0);
     ARG(obj_ptr<HttpRequest_base>, 1);
@@ -609,7 +611,7 @@ inline void http_base::s_static_request(const v8::FunctionCallbackInfo<v8::Value
     else
         hr = ac_request(v0, v1, v2, vr);
 
-    ASYNC_METHOD_OVER(3, 2);
+    METHOD_OVER(3, 2);
 
     ARG(exlib::string, 0);
     ARG(exlib::string, 1);
@@ -620,7 +622,7 @@ inline void http_base::s_static_request(const v8::FunctionCallbackInfo<v8::Value
     else
         hr = ac_request(v0, v1, v2, vr);
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
@@ -630,7 +632,7 @@ inline void http_base::s_static_request(const v8::FunctionCallbackInfo<v8::Value
     else
         hr = ac_request(v0, v1, vr);
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(v8::Local<v8::Object>, 0);
 
@@ -646,9 +648,9 @@ inline void http_base::s_static_get(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     obj_ptr<HttpResponse_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
@@ -665,9 +667,9 @@ inline void http_base::s_static_post(const v8::FunctionCallbackInfo<v8::Value>& 
 {
     obj_ptr<HttpResponse_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
@@ -684,9 +686,9 @@ inline void http_base::s_static_del(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     obj_ptr<HttpResponse_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
@@ -703,9 +705,9 @@ inline void http_base::s_static_put(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     obj_ptr<HttpResponse_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
@@ -722,9 +724,9 @@ inline void http_base::s_static_patch(const v8::FunctionCallbackInfo<v8::Value>&
 {
     obj_ptr<HttpResponse_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
@@ -741,9 +743,9 @@ inline void http_base::s_static_head(const v8::FunctionCallbackInfo<v8::Value>& 
 {
     obj_ptr<HttpResponse_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));

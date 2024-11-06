@@ -24,19 +24,22 @@ class Semaphore_base : public Lock_base {
 public:
     // Semaphore_base
     static result_t _new(int32_t value, obj_ptr<Semaphore_base>& retVal, v8::Local<v8::Object> This = v8::Local<v8::Object>());
-    virtual result_t wait(int32_t timeout, bool& retVal) = 0;
+    virtual result_t wait(int32_t timeout, bool& retVal, AsyncEvent* ac) = 0;
     virtual result_t post() = 0;
     virtual result_t trywait(bool& retVal) = 0;
 
 public:
-    template <typename T>
-    static void __new(const T& args);
+    static void __new(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Semaphore_base>& retVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_wait(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_post(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_trywait(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+public:
+    ASYNC_MEMBERVALUE2(Semaphore_base, wait, int32_t, bool);
 };
 }
 
@@ -44,7 +47,7 @@ namespace fibjs {
 inline ClassInfo& Semaphore_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
-        { "wait", s_wait, false, ClassData::ASYNC_SYNC },
+        { "wait", s_wait, false, ClassData::ASYNC_ASYNC },
         { "post", s_post, false, ClassData::ASYNC_SYNC },
         { "trywait", s_trywait, false, ClassData::ASYNC_SYNC }
     };
@@ -53,7 +56,7 @@ inline ClassInfo& Semaphore_base::class_info()
         "Semaphore", false, s__new, NULL,
         ARRAYSIZE(s_method), s_method, 0, NULL, 0, NULL, 0, NULL, NULL, NULL,
         &Lock_base::class_info(),
-        false
+        true
     };
 
     static ClassInfo s_ci(s_cd);
@@ -66,8 +69,7 @@ inline void Semaphore_base::s__new(const v8::FunctionCallbackInfo<v8::Value>& ar
     __new(args);
 }
 
-template <typename T>
-void Semaphore_base::__new(const T& args)
+inline void Semaphore_base::__new(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     obj_ptr<Semaphore_base> vr;
 
@@ -82,18 +84,36 @@ void Semaphore_base::__new(const T& args)
     CONSTRUCT_RETURN();
 }
 
+inline result_t Semaphore_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Semaphore_base>& retVal)
+{
+    obj_ptr<Semaphore_base> vr;
+
+    LOAD_ENTER();
+
+    METHOD_OVER(1, 0);
+
+    OPT_ARG(int32_t, 0, 1);
+
+    hr = _new(v0, vr, args.This());
+
+    LOAD_RETURN();
+}
+
 inline void Semaphore_base::s_wait(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     bool vr;
 
-    METHOD_INSTANCE(Semaphore_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_INSTANCE(Semaphore_base);
+    ASYNC_METHOD_ENTER();
 
     METHOD_OVER(1, 0);
 
     OPT_ARG(int32_t, 0, -1);
 
-    hr = pInst->wait(v0, vr);
+    if (!cb.IsEmpty())
+        hr = pInst->acb_wait(v0, cb, args);
+    else
+        hr = pInst->ac_wait(v0, vr);
 
     METHOD_RETURN();
 }

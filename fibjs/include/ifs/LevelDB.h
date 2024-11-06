@@ -50,6 +50,9 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<LevelDB_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_has(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -113,9 +116,9 @@ inline void LevelDB_base::s_has(const v8::FunctionCallbackInfo<v8::Value>& args)
     bool vr;
 
     ASYNC_METHOD_INSTANCE(LevelDB_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(obj_ptr<Buffer_base>, 0);
 
@@ -132,9 +135,9 @@ inline void LevelDB_base::s_get(const v8::FunctionCallbackInfo<v8::Value>& args)
     obj_ptr<Buffer_base> vr;
 
     ASYNC_METHOD_INSTANCE(LevelDB_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(obj_ptr<Buffer_base>, 0);
 
@@ -165,9 +168,9 @@ inline void LevelDB_base::s_mget(const v8::FunctionCallbackInfo<v8::Value>& args
 inline void LevelDB_base::s_set(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(LevelDB_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
@@ -211,9 +214,9 @@ inline void LevelDB_base::s_mremove(const v8::FunctionCallbackInfo<v8::Value>& a
 inline void LevelDB_base::s_remove(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(LevelDB_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(obj_ptr<Buffer_base>, 0);
 
@@ -230,9 +233,9 @@ inline void LevelDB_base::s_firstKey(const v8::FunctionCallbackInfo<v8::Value>& 
     obj_ptr<Buffer_base> vr;
 
     ASYNC_METHOD_INSTANCE(LevelDB_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(0, 0);
+    METHOD_OVER(0, 0);
 
     if (!cb.IsEmpty())
         hr = pInst->acb_firstKey(cb, args);
@@ -247,9 +250,9 @@ inline void LevelDB_base::s_lastKey(const v8::FunctionCallbackInfo<v8::Value>& a
     obj_ptr<Buffer_base> vr;
 
     ASYNC_METHOD_INSTANCE(LevelDB_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(0, 0);
+    METHOD_OVER(0, 0);
 
     if (!cb.IsEmpty())
         hr = pInst->acb_lastKey(cb, args);
@@ -341,9 +344,9 @@ inline void LevelDB_base::s_commit(const v8::FunctionCallbackInfo<v8::Value>& ar
 inline void LevelDB_base::s_close(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(LevelDB_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(0, 0);
+    METHOD_OVER(0, 0);
 
     if (!cb.IsEmpty())
         hr = pInst->acb_close(cb, args);

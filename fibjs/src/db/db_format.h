@@ -413,7 +413,8 @@ public:
                     char str[32];
 
                     snprintf(str, sizeof(str), "%d", size);
-                    _fields.append("VARCHAR(");
+                    _fields.append(impl::data_type().VARCHAR);
+                    _fields.append(1, '(');
                     _fields.append((const char*)str);
                     _fields.append(1, ')');
                 } else
@@ -611,9 +612,10 @@ private:
         Isolate* isolate = Isolate::current();
         v8::Local<v8::Context> context = isolate->context();
 
-        if (IsJSBuffer(v)) {
-            obj_ptr<Buffer> bin = Buffer::getInstance(v);
-            str.append(impl::escape_binary(bin));
+        if (IsJSBuffer(v) || v->IsArrayBuffer() || v->IsArrayBufferView() || v->IsTypedArray()) {
+            obj_ptr<Buffer_base> bin;
+            GetArgumentValue(isolate, v, bin);
+            str.append(impl::escape_binary(bin.As<Buffer>()));
         } else if (v->IsArray()) {
             v8::Local<v8::Array> a = v.As<v8::Array>();
             int32_t len = a->Length();

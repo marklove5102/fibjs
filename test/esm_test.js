@@ -3,6 +3,7 @@ test.setup();
 
 const coroutine = require('coroutine');
 const vm = require('vm');
+const url = require('url');
 const path = require('path');
 
 describe('ECMAScript modules', () => {
@@ -163,15 +164,18 @@ describe('ECMAScript modules', () => {
 
         it("require a pendding module", async () => {
             var m1, m2;
+            var s = 0;
 
             ev.clear();
 
             setImmediate(() => {
+                s = 1;
                 m1 = require('./esm_files/esm10.mjs');
                 ev.set();
             });
 
-            coroutine.sleep();
+            while (!s)
+                coroutine.sleep();
 
             ev.set();
             ev.clear();
@@ -236,10 +240,12 @@ describe('ECMAScript modules', () => {
 
     it("support import.meta", async () => {
         var m = await import('./esm_files/esm17.mjs');
+
         assert.deepEqual(m, {
             test: {
                 dirname: path.join(__dirname, 'esm_files'),
-                filename: path.join(__dirname, 'esm_files', 'esm17.mjs')
+                filename: path.join(__dirname, 'esm_files', 'esm17.mjs'),
+                url: url.pathToFileURL(path.join(__dirname, 'esm_files', 'esm17.mjs')).href
             }
         });
     });

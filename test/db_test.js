@@ -14,15 +14,15 @@ var sql_server = {
     // for running test locally, uncomment configurations below and change it accordingly to your DB server.
     // mysql: {
     //     desc: '[mysql] sql db universal test',
-    //     conn_str: `mysql://root@localhost:3306/${DBNAME}`,
+    //     conn_str: `mysql://root@localhost/${DBNAME}`,
     // },
     // psql: {
     //     desc: '[psql] sql db universal test',
-    //     conn_str: `psql://postgres@localhost:5432/${DBNAME}`,
+    //     conn_str: `psql://postgres@localhost/${DBNAME}`,
     // },
     // mssql: {
     //     desc: '[mssql] sql db universal test',
-    //     conn_str: `mssql://sa@192.168.67.63/${DBNAME}`,
+    //     conn_str: `mssql://sa@localhost/${DBNAME}`,
     // },
 }
 
@@ -32,15 +32,15 @@ describe("db", () => {
         var tables = ['test', 'test_null', 'test2', 'test3', 'test4'];
 
         var initDb = () => {
-            switch (type) {
-                case 'psql':
-                    conn.execute(`SELECT 'CREATE DATABASE ${DBNAME}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${DBNAME}')`)
-                    break;
-                case 'mssql':
-                case 'mysql':
-                    conn.execute(`CREATE DATABASE IF NOT EXISTS \`${DBNAME}\``);
-                    break;
-            }
+            // switch (type) {
+            //     case 'psql':
+            //         conn.execute(`SELECT 'CREATE DATABASE ${DBNAME}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${DBNAME}')`)
+            //         break;
+            //     case 'mssql':
+            //     case 'mysql':
+            //         conn.execute(`CREATE DATABASE IF NOT EXISTS \`${DBNAME}\``);
+            //         break;
+            // }
         }
 
         before(() => {
@@ -545,7 +545,7 @@ describe("db", () => {
                         sql_equal(conn, conn.format("createTable", opts), "CREATE TABLE `test`(`t` LONGTEXT, `t1` VARCHAR(100), `n` DOUBLE, `n1` FLOAT, `i` INT, `i2` SMALLINT, `i3` BIGINT, `d` DATE, `d1` DATETIME, `b` BLOB, `b1` LONGBLOB, `def` INT DEFAULT 123, `required` INT NOT NULL, `unique` INT UNIQUE, `key` INT PRIMARY KEY)");
                         break;
                     case "mssql":
-                        sql_equal(conn, conn.format("createTable", opts), "CREATE TABLE [test]([t] VARCHAR(MAX), [t1] VARCHAR(100), [n] FLOAT, [n1] REAL, [i] INT, [i2] SMALLINT, [i3] BIGINT, [d] DATE, [d1] DATETIME, [b] VARBINARY(MAX), [b1] IMAGE, [def] INT DEFAULT 123, [required] INT NOT NULL, [unique] INT UNIQUE, [key] INT PRIMARY KEY)");
+                        sql_equal(conn, conn.format("createTable", opts), "CREATE TABLE [test]([t] NVARCHAR(MAX), [t1] NVARCHAR(100), [n] FLOAT, [n1] REAL, [i] INT, [i2] SMALLINT, [i3] BIGINT, [d] DATE, [d1] DATETIME, [b] VARBINARY(MAX), [b1] IMAGE, [def] INT DEFAULT 123, [required] INT NOT NULL, [unique] INT UNIQUE, [key] INT PRIMARY KEY)");
                         break;
                     case "psql":
                         sql_equal(conn, conn.format("createTable", opts), "CREATE TABLE \"test\"(\"t\" TEXT, \"t1\" VARCHAR(100), \"n\" FLOAT, \"n1\" REAL, \"i\" INT, \"i2\" SMALLINT, \"i3\" BIGINT, \"d\" DATE, \"d1\" TIMESTAMP, \"b\" BYTEA, \"b1\" BYTEA, \"def\" INT DEFAULT 123, \"required\" INT NOT NULL, \"unique\" INT UNIQUE, \"key\" INT PRIMARY KEY)");
@@ -624,6 +624,23 @@ describe("db", () => {
                     assert.deepEqual(rs[0].v, v);
             });
 
+            it('typed array', () => {
+                var v = new Uint8Array([1, 2, 3]);
+                var rs = conn.execute('select ? as v', v);
+                assert.deepEqual(rs[0].v, v);
+            });
+
+            it('array buffer', () => {
+                const encodedData = new TextEncoder("utf-8").encode("hello world");
+                const buffer = new ArrayBuffer(encodedData.length);
+                const v = new Uint8Array(buffer);
+                v.set(encodedData);
+
+                var rs = conn.execute('select ? as v', buffer);
+                const value = new TextDecoder("utf-8").decode(rs[0].v);
+                assert.deepEqual(value, "hello world");
+            });
+
             it('field', () => {
                 var res = [];
                 for (var i = 0x21; i < 0x7f; i++) {
@@ -648,7 +665,7 @@ describe("db", () => {
 
         it("create table", () => {
             if (conn.type == 'mssql')
-                conn.execute('create table test(t0 INT IDENTITY PRIMARY KEY, t1 int, t2 varchar(128), t3 VARBINARY(100), t4 datetime);');
+                conn.execute('create table test(t0 INT IDENTITY PRIMARY KEY, t1 int, t2 nvarchar(128), t3 VARBINARY(100), t4 datetime);');
             else {
                 if (conn.type == 'psql') {
                     conn.execute('create table test(t0 SERIAL PRIMARY KEY, t1 int, t2 varchar(128), t3 BYTEA, t4 timestamp);');
@@ -660,8 +677,13 @@ describe("db", () => {
                 }
             }
 
-            conn.execute('create table test2(t1 varchar(10), t2 varchar(10));');
-            conn.execute('create table test3(t1 varchar(10), t2 varchar(10));');
+            if (conn.type == 'mssql') {
+                conn.execute('create table test2(t1 nvarchar(10), t2 nvarchar(10));');
+                conn.execute('create table test3(t1 nvarchar(10), t2 nvarchar(10));');
+            } else {
+                conn.execute('create table test2(t1 varchar(10), t2 varchar(10));');
+                conn.execute('create table test3(t1 varchar(10), t2 varchar(10));');
+            }
 
             conn.createTable({
                 table: "test4",
@@ -1135,6 +1157,23 @@ describe("db", () => {
             assert.equal(rs.affected, 1);
         });
 
+        it("multilanguage", () => {
+            const field_names = [
+                "field",
+                "字段",
+                "フィールド",
+                "필드"
+            ];
+
+            field_names.forEach((field_name) => {
+                if(conn.type == 'mssql')
+                    var rs = conn.execute(`select N'${field_name}' as "${field_name}";`);
+                else
+                    var rs = conn.execute(`select '${field_name}' as "${field_name}";`);
+                assert.equal(rs[0][field_name], field_name);
+            });
+        });
+
         it("binary", () => {
             var b = Buffer.alloc(1);
 
@@ -1313,7 +1352,6 @@ describe("db", () => {
         });
 
         switch (type) {
-            case 'mssql':
             case 'mysql':
             case 'psql':
                 // some special types would not be parsed correctly with old implementation,

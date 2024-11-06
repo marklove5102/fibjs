@@ -21,19 +21,22 @@ class Lock_base : public object_base {
 public:
     // Lock_base
     static result_t _new(obj_ptr<Lock_base>& retVal, v8::Local<v8::Object> This = v8::Local<v8::Object>());
-    virtual result_t acquire(bool blocking, bool& retVal) = 0;
+    virtual result_t acquire(bool blocking, bool& retVal, AsyncEvent* ac) = 0;
     virtual result_t release() = 0;
     virtual result_t count(int32_t& retVal) = 0;
 
 public:
-    template <typename T>
-    static void __new(const T& args);
+    static void __new(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Lock_base>& retVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_acquire(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_release(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_count(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+public:
+    ASYNC_MEMBERVALUE2(Lock_base, acquire, bool, bool);
 };
 }
 
@@ -41,7 +44,7 @@ namespace fibjs {
 inline ClassInfo& Lock_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
-        { "acquire", s_acquire, false, ClassData::ASYNC_SYNC },
+        { "acquire", s_acquire, false, ClassData::ASYNC_ASYNC },
         { "release", s_release, false, ClassData::ASYNC_SYNC },
         { "count", s_count, false, ClassData::ASYNC_SYNC }
     };
@@ -50,7 +53,7 @@ inline ClassInfo& Lock_base::class_info()
         "Lock", false, s__new, NULL,
         ARRAYSIZE(s_method), s_method, 0, NULL, 0, NULL, 0, NULL, NULL, NULL,
         &object_base::class_info(),
-        false
+        true
     };
 
     static ClassInfo s_ci(s_cd);
@@ -63,8 +66,7 @@ inline void Lock_base::s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
     __new(args);
 }
 
-template <typename T>
-void Lock_base::__new(const T& args)
+inline void Lock_base::__new(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     obj_ptr<Lock_base> vr;
 
@@ -77,18 +79,34 @@ void Lock_base::__new(const T& args)
     CONSTRUCT_RETURN();
 }
 
+inline result_t Lock_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Lock_base>& retVal)
+{
+    obj_ptr<Lock_base> vr;
+
+    LOAD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = _new(vr, args.This());
+
+    LOAD_RETURN();
+}
+
 inline void Lock_base::s_acquire(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     bool vr;
 
-    METHOD_INSTANCE(Lock_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_INSTANCE(Lock_base);
+    ASYNC_METHOD_ENTER();
 
     METHOD_OVER(1, 0);
 
     OPT_ARG(bool, 0, true);
 
-    hr = pInst->acquire(v0, vr);
+    if (!cb.IsEmpty())
+        hr = pInst->acb_acquire(v0, cb, args);
+    else
+        hr = pInst->ac_acquire(v0, vr);
 
     METHOD_RETURN();
 }

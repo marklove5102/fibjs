@@ -37,8 +37,8 @@ public:
     virtual result_t set_EOL(exlib::string newVal) = 0;
 
 public:
-    template <typename T>
-    static void __new(const T& args);
+    static void __new(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<BufferedStream_base>& retVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -98,8 +98,7 @@ inline void BufferedStream_base::s__new(const v8::FunctionCallbackInfo<v8::Value
     __new(args);
 }
 
-template <typename T>
-void BufferedStream_base::__new(const T& args)
+inline void BufferedStream_base::__new(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     obj_ptr<BufferedStream_base> vr;
 
@@ -114,14 +113,29 @@ void BufferedStream_base::__new(const T& args)
     CONSTRUCT_RETURN();
 }
 
+inline result_t BufferedStream_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<BufferedStream_base>& retVal)
+{
+    obj_ptr<BufferedStream_base> vr;
+
+    LOAD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(obj_ptr<Stream_base>, 0);
+
+    hr = _new(v0, vr, args.This());
+
+    LOAD_RETURN();
+}
+
 inline void BufferedStream_base::s_readText(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     exlib::string vr;
 
     ASYNC_METHOD_INSTANCE(BufferedStream_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(int32_t, 0);
 
@@ -138,9 +152,9 @@ inline void BufferedStream_base::s_readLine(const v8::FunctionCallbackInfo<v8::V
     exlib::string vr;
 
     ASYNC_METHOD_INSTANCE(BufferedStream_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 0);
+    METHOD_OVER(1, 0);
 
     OPT_ARG(int32_t, 0, -1);
 
@@ -173,9 +187,9 @@ inline void BufferedStream_base::s_readUntil(const v8::FunctionCallbackInfo<v8::
     exlib::string vr;
 
     ASYNC_METHOD_INSTANCE(BufferedStream_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(int32_t, 1, -1);
@@ -191,9 +205,9 @@ inline void BufferedStream_base::s_readUntil(const v8::FunctionCallbackInfo<v8::
 inline void BufferedStream_base::s_writeText(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(BufferedStream_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -208,9 +222,9 @@ inline void BufferedStream_base::s_writeText(const v8::FunctionCallbackInfo<v8::
 inline void BufferedStream_base::s_writeLine(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(BufferedStream_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 

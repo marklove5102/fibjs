@@ -12,8 +12,10 @@
 #include "ifs/child_process.h"
 #include "ChildProcess.h"
 #include "AsyncUV.h"
+#include <uv/include/uv.h>
 #include "MemoryStream.h"
 #include "encoding.h"
+#include "StringBuffer.h"
 #include "ifs/process.h"
 
 namespace fibjs {
@@ -46,22 +48,22 @@ result_t child_process_base::execFile(exlib::string command, v8::Local<v8::Array
             , m_ac(ac)
         {
             setAsync();
-            ChildProcess_base* cp = ac->m_ctxo.As<ChildProcess_base>();
+            m_cp = ac->m_ctxo.As<ChildProcess_base>();
 
-            cp->get_stdout(m_stdout);
+            m_cp->get_stdout(m_stdout);
             if (m_stdout) {
                 m_cnt.inc();
                 m_bufout = new MemoryStream();
             }
 
-            cp->get_stderr(m_stderr);
+            m_cp->get_stderr(m_stderr);
             if (m_stderr) {
                 m_cnt.inc();
                 m_buferr = new MemoryStream();
             }
 
             m_cnt.inc();
-            cp->join(m_status, this);
+            m_cp->join(m_status, this);
 
             if (m_stdout)
                 m_stdout->copyTo(m_bufout, -1, m_szout, this);
@@ -106,6 +108,7 @@ result_t child_process_base::execFile(exlib::string command, v8::Local<v8::Array
 
                 m_retVal->stdout = getBuffer(m_bufout, m_codec);
                 m_retVal->stderr = getBuffer(m_buferr, m_codec);
+                m_cp->get_exitCode(m_retVal->exitCode);
 
                 m_ac->post(0);
                 delete this;
@@ -118,6 +121,9 @@ result_t child_process_base::execFile(exlib::string command, v8::Local<v8::Array
         exlib::string m_codec;
         obj_ptr<ExecFileType>& m_retVal;
         AsyncEvent* m_ac;
+
+        ChildProcess_base* m_cp;
+
         exlib::atomic m_cnt;
 
         obj_ptr<Stream_base> m_stdout;
@@ -169,27 +175,180 @@ result_t child_process_base::execFile(exlib::string command, v8::Local<v8::Objec
 result_t child_process_base::exec(exlib::string command, v8::Local<v8::Object> options,
     obj_ptr<ExecType>& retVal, AsyncEvent* ac)
 {
+#ifdef _WIN32
+    const char* shell = "cmd.exe";
+#elif defined(__ANDROID__)
+    const char* shell = "/system/bin/sh";
+#else
+    const char* shell = "/bin/sh";
+#endif
+
     obj_ptr<ExecFileType>& _retVal = *((obj_ptr<ExecFileType>*)&retVal);
 
     if (ac->isSync()) {
         Isolate* isolate = Isolate::current(options);
         v8::Local<v8::Context> context = isolate->context();
-        obj_ptr<NArray> _args;
-        exlib::string cmd;
         v8::Local<v8::Array> args = v8::Array::New(isolate->m_isolate);
-        size_t i;
+        v8::Local<v8::Object> opts;
 
-        util_base::parseArgs(command, _args);
-        if (_args->m_array.size()) {
-            cmd = _args->m_array[0].string();
-            for (i = 1; i < _args->m_array.size(); i++)
-                args->Set(context, (int32_t)i - 1, _args->m_array[i]).IsJust();
+#ifdef _WIN32
+        static bool init = false;
+        static bool is_cmd_exe = false;
+
+        if (!init) {
+            size_t sz = 4096;
+            char* env_shell = (char*)malloc(sz);
+
+            if (uv_os_getenv("ComSpec", env_shell, &sz) == 0)
+                shell = env_shell;
+            else
+                free(env_shell);
+
+            int32_t len = strlen(shell);
+            if (len >= 7 && stricmp(shell + len - 7, "cmd.exe") == 0) {
+                if (len == 7 || isPathSlash(shell[len - 8]))
+                    is_cmd_exe = true;
+            } else if (len >= 3 && stricmp(shell + len - 3, "cmd") == 0) {
+                if (len == 3 || isPathSlash(shell[len - 4]))
+                    is_cmd_exe = true;
+            }
+
+            init = true;
         }
 
-        return execFile(cmd, args, options, _retVal, ac);
+        if (is_cmd_exe) {
+            args->Set(context, 0, isolate->NewString("/d")).IsJust();
+            args->Set(context, 1, isolate->NewString("/s")).IsJust();
+            args->Set(context, 2, isolate->NewString("/c")).IsJust();
+            args->Set(context, 3, isolate->NewString(command)).IsJust();
+        } else {
+            args->Set(context, 0, isolate->NewString("/c")).IsJust();
+            args->Set(context, 1, isolate->NewString(command)).IsJust();
+        }
+
+        v8::Local<v8::String> windowsVerbatimArguments = isolate->NewString("windowsVerbatimArguments");
+        if (!options->Has(context, windowsVerbatimArguments).FromMaybe(false)) {
+            v8::Local<v8::Value> opts_;
+            util_base::clone(options, opts_);
+
+            opts = opts_.As<v8::Object>();
+            opts->Set(context, windowsVerbatimArguments, v8::True(isolate->m_isolate)).IsJust();
+        } else
+            opts = options;
+#else
+        args->Set(context, 0, isolate->NewString("-c")).IsJust();
+        args->Set(context, 1, isolate->NewString(command)).IsJust();
+
+        opts = options;
+#endif
+
+        return execFile(shell, args, opts, _retVal, ac);
     }
 
-    return execFile(command, v8::Local<v8::Array>(), options, _retVal, ac);
+    return execFile(shell, v8::Local<v8::Array>(), options, _retVal, ac);
+}
+
+result_t child_process_base::sh(v8::Local<v8::Array> strings, OptArgs args, exlib::string& retVal, AsyncEvent* ac)
+{
+    if (ac->isSync()) {
+        Isolate* isolate = Isolate::current(strings);
+        v8::Local<v8::Context> context = isolate->context();
+        StringBuffer sbuf;
+        int32_t argc = strings->Length();
+        size_t strcnt = strings->Length();
+
+        for (int32_t i = 0; i < strcnt; i++) {
+            v8::Local<v8::Value> v = strings->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+            v8::String::Utf8Value str(isolate->m_isolate, v);
+            sbuf.append(*str, str.length());
+
+            if (i < argc - 1) {
+                v8::Local<v8::Value> v1 = args[i];
+
+                if (v1->IsArray()) {
+                    v8::Local<v8::Array> arr = v8::Local<v8::Array>::Cast(v1);
+                    int32_t len = arr->Length();
+
+                    for (int32_t j = 0; j < len; j++) {
+                        v8::Local<v8::Value> v2 = arr->Get(context, j).FromMaybe(v8::Local<v8::Value>());
+                        v8::String::Utf8Value str2(isolate->m_isolate, v2);
+                        if (*str2)
+                            sbuf.append(*str2, str2.length());
+
+                        if (j < len - 1)
+                            sbuf.append(' ');
+                    }
+                } else {
+                    v8::String::Utf8Value str1(isolate->m_isolate, v1);
+                    if (*str1)
+                        sbuf.append(*str1, str1.length());
+                }
+            }
+        }
+
+        exlib::string cmd = sbuf.str();
+        v8::Local<v8::Object> opts = v8::Object::New(isolate->m_isolate);
+
+        ac->m_ctx.resize(2);
+        ac->m_ctx[1] = cmd;
+
+        return exec(cmd, opts, *(obj_ptr<ExecType>*)nullptr, ac);
+    }
+
+    class AsyncShell : public AsyncEvent {
+    public:
+        AsyncShell(exlib::string& retVal, AsyncEvent* ac)
+            : m_retVal(retVal)
+            , m_ac(ac)
+        {
+            m_ctx.resize(1);
+            m_ctx[0] = ac->m_ctx[0];
+            m_ctxo = ac->m_ctxo;
+
+            setAsync();
+        }
+
+        static exlib::string process_output(Variant& v)
+        {
+            exlib::string s = v.string();
+            const char* c_s = s.c_str();
+            size_t sz = s.length();
+
+#ifdef _WIN32
+            if (sz > 1 && c_s[sz - 2] == '\r' && c_s[sz - 1] == '\n')
+                s.resize(sz - 2);
+#else
+            if (sz > 0 && c_s[sz - 1] == '\n')
+                s.resize(sz - 1);
+#endif
+
+            return s;
+        }
+
+        virtual int32_t post(int32_t v)
+        {
+            if (m_exec_retVal->exitCode) {
+                m_ac->post(Runtime::setError(process_output(m_exec_retVal->stderr)));
+            } else {
+                m_retVal = process_output(m_exec_retVal->stdout);
+                m_ac->post(v);
+            }
+            delete this;
+            return 0;
+        }
+
+    public:
+        obj_ptr<ExecType> m_exec_retVal;
+
+    private:
+        exlib::string& m_retVal;
+        AsyncEvent* m_ac;
+    };
+
+    AsyncShell* as = new AsyncShell(retVal, ac);
+    exlib::string cmd = ac->m_ctx[1].string();
+
+    return exec(cmd, v8::Local<v8::Object>(), as->m_exec_retVal, as);
 }
 
 result_t child_process_base::spawnSync(exlib::string command, v8::Local<v8::Array> args,

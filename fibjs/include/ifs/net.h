@@ -56,6 +56,9 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<net_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_static_get_use_uv_socket(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_set_use_uv_socket(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -173,9 +176,9 @@ inline void net_base::s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>
 {
     exlib::string vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(int32_t, 1, C_AF_INET);
@@ -192,9 +195,9 @@ inline void net_base::s_static_ip(const v8::FunctionCallbackInfo<v8::Value>& arg
 {
     exlib::string vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -210,9 +213,9 @@ inline void net_base::s_static_ipv6(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     exlib::string vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -228,9 +231,9 @@ inline void net_base::s_static_connect(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<Stream_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(int32_t, 1, 0);
@@ -247,9 +250,9 @@ inline void net_base::s_static_openSmtp(const v8::FunctionCallbackInfo<v8::Value
 {
     obj_ptr<Smtp_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(int32_t, 1, 0);

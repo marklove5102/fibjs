@@ -16,25 +16,24 @@
 namespace fibjs {
 
 class WebView_base;
+class Menu_base;
+class Tray_base;
 
 class gui_base : public object_base {
     DECLARE_CLASS(gui_base);
 
 public:
-    enum {
-        C_IE7 = 7000,
-        C_IE8 = 8000,
-        C_IE9 = 9000,
-        C_IE10 = 10000,
-        C_IE11 = 11000,
-        C_EDGE = 11001
-    };
-
-public:
     // gui_base
-    static result_t setVersion(int32_t ver);
     static result_t open(exlib::string url, v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal);
     static result_t open(v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal);
+    static result_t openFile(exlib::string file, v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal);
+    static result_t createMenu(std::vector<v8::Local<v8::Object>>& items, obj_ptr<Menu_base>& retVal);
+    static result_t createTray(v8::Local<v8::Object> opt, obj_ptr<Tray_base>& retVal);
+    static result_t alert(exlib::string message, AsyncEvent* ac);
+    static result_t alert(exlib::string title, exlib::string message, AsyncEvent* ac);
+    static result_t confirm(exlib::string message, bool& retVal, AsyncEvent* ac);
+    static result_t confirm(exlib::string title, exlib::string message, bool& retVal, AsyncEvent* ac);
+    static result_t chooseFile(v8::Local<v8::Object> options, obj_ptr<NArray>& retVal, AsyncEvent* ac);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -45,53 +44,57 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<gui_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
-    static void s_static_setVersion(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_open(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_openFile(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_createMenu(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_createTray(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_alert(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_confirm(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_chooseFile(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+public:
+    ASYNC_STATIC1(gui_base, alert, exlib::string);
+    ASYNC_STATIC2(gui_base, alert, exlib::string, exlib::string);
+    ASYNC_STATICVALUE2(gui_base, confirm, exlib::string, bool);
+    ASYNC_STATICVALUE3(gui_base, confirm, exlib::string, exlib::string, bool);
+    ASYNC_STATICVALUE2(gui_base, chooseFile, v8::Local<v8::Object>, obj_ptr<NArray>);
 };
 }
 
 #include "ifs/WebView.h"
+#include "ifs/Menu.h"
+#include "ifs/Tray.h"
 
 namespace fibjs {
 inline ClassInfo& gui_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
-        { "setVersion", s_static_setVersion, true, ClassData::ASYNC_SYNC },
-        { "open", s_static_open, true, ClassData::ASYNC_SYNC }
+        { "open", s_static_open, true, ClassData::ASYNC_SYNC },
+        { "openFile", s_static_openFile, true, ClassData::ASYNC_SYNC },
+        { "createMenu", s_static_createMenu, true, ClassData::ASYNC_SYNC },
+        { "createTray", s_static_createTray, true, ClassData::ASYNC_SYNC },
+        { "alert", s_static_alert, true, ClassData::ASYNC_ASYNC },
+        { "confirm", s_static_confirm, true, ClassData::ASYNC_ASYNC },
+        { "chooseFile", s_static_chooseFile, true, ClassData::ASYNC_ASYNC }
     };
 
-    static ClassData::ClassConst s_const[] = {
-        { "IE7", C_IE7 },
-        { "IE8", C_IE8 },
-        { "IE9", C_IE9 },
-        { "IE10", C_IE10 },
-        { "IE11", C_IE11 },
-        { "EDGE", C_EDGE }
+    static ClassData::ClassObject s_object[] = {
+        { "WebView", WebView_base::class_info }
     };
 
     static ClassData s_cd = {
         "gui", true, s__new, NULL,
-        ARRAYSIZE(s_method), s_method, 0, NULL, 0, NULL, ARRAYSIZE(s_const), s_const, NULL, NULL,
+        ARRAYSIZE(s_method), s_method, ARRAYSIZE(s_object), s_object, 0, NULL, 0, NULL, NULL, NULL,
         &object_base::class_info(),
-        false
+        true
     };
 
     static ClassInfo s_ci(s_cd);
     return s_ci;
-}
-
-inline void gui_base::s_static_setVersion(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    METHOD_ENTER();
-
-    METHOD_OVER(1, 1);
-
-    ARG(int32_t, 0);
-
-    hr = setVersion(v0);
-
-    METHOD_VOID();
 }
 
 inline void gui_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -112,6 +115,124 @@ inline void gui_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& a
     OPT_ARG(v8::Local<v8::Object>, 0, v8::Object::New(isolate->m_isolate));
 
     hr = open(v0, vr);
+
+    METHOD_RETURN();
+}
+
+inline void gui_base::s_static_openFile(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    obj_ptr<WebView_base> vr;
+
+    METHOD_ENTER();
+
+    METHOD_OVER(2, 1);
+
+    ARG(exlib::string, 0);
+    OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
+
+    hr = openFile(v0, v1, vr);
+
+    METHOD_RETURN();
+}
+
+inline void gui_base::s_static_createMenu(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    obj_ptr<Menu_base> vr;
+
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 0);
+
+    OPT_ARG(std::vector<v8::Local<v8::Object>>, 0, std::vector<v8::Local<v8::Object>>());
+
+    hr = createMenu(v0, vr);
+
+    METHOD_RETURN();
+}
+
+inline void gui_base::s_static_createTray(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    obj_ptr<Tray_base> vr;
+
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 0);
+
+    OPT_ARG(v8::Local<v8::Object>, 0, v8::Object::New(isolate->m_isolate));
+
+    hr = createTray(v0, vr);
+
+    METHOD_RETURN();
+}
+
+inline void gui_base::s_static_alert(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    ASYNC_METHOD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(exlib::string, 0);
+
+    if (!cb.IsEmpty())
+        hr = acb_alert(v0, cb, args);
+    else
+        hr = ac_alert(v0);
+
+    METHOD_OVER(2, 2);
+
+    ARG(exlib::string, 0);
+    ARG(exlib::string, 1);
+
+    if (!cb.IsEmpty())
+        hr = acb_alert(v0, v1, cb, args);
+    else
+        hr = ac_alert(v0, v1);
+
+    METHOD_VOID();
+}
+
+inline void gui_base::s_static_confirm(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    bool vr;
+
+    ASYNC_METHOD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(exlib::string, 0);
+
+    if (!cb.IsEmpty())
+        hr = acb_confirm(v0, cb, args);
+    else
+        hr = ac_confirm(v0, vr);
+
+    METHOD_OVER(2, 2);
+
+    ARG(exlib::string, 0);
+    ARG(exlib::string, 1);
+
+    if (!cb.IsEmpty())
+        hr = acb_confirm(v0, v1, cb, args);
+    else
+        hr = ac_confirm(v0, v1, vr);
+
+    METHOD_RETURN();
+}
+
+inline void gui_base::s_static_chooseFile(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    obj_ptr<NArray> vr;
+
+    ASYNC_METHOD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(v8::Local<v8::Object>, 0);
+
+    if (!cb.IsEmpty())
+        hr = acb_chooseFile(v0, cb, args);
+    else
+        hr = ac_chooseFile(v0, vr);
 
     METHOD_RETURN();
 }

@@ -55,10 +55,14 @@ run("./tls_test.js");
 run("./string_decoder_test.js");
 run("./url_test.js");
 run("./querystring_test.js");
+run("./mime_test.js");
 run("./http_test.js");
 run("./mq_test.js");
 run("./rtc_test.js");
-run("./gui_test.js");
+
+if (process.platform != "linux")
+    run("./gui_test.js");
+
 run("./registry_test.js");
 run("./uuid_test.js");
 run("./zlib_test.js");

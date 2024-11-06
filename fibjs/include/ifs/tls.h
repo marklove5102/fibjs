@@ -42,6 +42,9 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<tls_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_static_createSecureContext(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_get_secureContext(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -128,9 +131,9 @@ inline void tls_base::s_static_connect(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<Stream_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(int32_t, 1, 0);
@@ -140,7 +143,7 @@ inline void tls_base::s_static_connect(const v8::FunctionCallbackInfo<v8::Value>
     else
         hr = ac_connect(v0, v1, vr);
 
-    ASYNC_METHOD_OVER(3, 2);
+    METHOD_OVER(3, 2);
 
     ARG(exlib::string, 0);
     ARG(obj_ptr<SecureContext_base>, 1);
@@ -151,7 +154,7 @@ inline void tls_base::s_static_connect(const v8::FunctionCallbackInfo<v8::Value>
     else
         hr = ac_connect(v0, v1, v2, vr);
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(v8::Local<v8::Object>, 1);

@@ -10,20 +10,18 @@
  @author Leo Hoo <lion@9465.net>
  */
 
-#include <exlib/include/osconfig.h>
+#include <uv/include/uv.h>
 #include <errno.h>
+
+static_assert(sizeof(wchar_t) == 2, "wchar_t size is not 2 bytes");
 
 #ifdef _WIN32
 
-#include <ws2tcpip.h>
-#include <winsock2.h>
-#include <mstcpip.h>
+#include <windows.h>
 
 #ifndef IPV6_V6ONLY
 #define IPV6_V6ONLY 27
 #endif // IPV6_V6ONLY
-
-#include <windows.h>
 
 #ifndef EWOULDBLOCK
 #define EINPROGRESS WSAEWOULDBLOCK
@@ -210,47 +208,24 @@ enum {
     do {                                                    \
         do {
 
-#define METHOD_OVER(c, o)                                                                     \
-    }                                                                                         \
-    while (0)                                                                                 \
-        ;                                                                                     \
-    if (hr > CALL_E_MIN_ARG && hr < CALL_E_MAX)                                               \
-        do {                                                                                  \
-            hr = 0;                                                                           \
-            int32_t argc1 = args.Length();                                                    \
-            int32_t argc = argc1;                                                             \
-            while (argc > (o) && (args[argc - 1]->IsUndefined() || args[argc - 1]->IsNull())) \
-                argc--;                                                                       \
-            if ((c) >= 0 && argc > (c)) {                                                     \
-                hr = CALL_E_BADPARAMCOUNT;                                                    \
-                break;                                                                        \
-            }                                                                                 \
-            if ((o) > 0 && argc < (o)) {                                                      \
-                hr = setRuntimeError(CALL_E_PARAMNOTOPTIONAL);                                \
-                break;                                                                        \
-            }
-
-#define ASYNC_METHOD_OVER(c, o)                                                               \
-    }                                                                                         \
-    while (0)                                                                                 \
-        ;                                                                                     \
-    if (hr > CALL_E_MIN_ARG && hr < CALL_E_MAX)                                               \
-        do {                                                                                  \
-            hr = 0;                                                                           \
-            int32_t argc1 = args.Length();                                                    \
-            v8::Local<v8::Function> cb;                                                       \
-            if (argc1 > 0 && args[argc1 - 1]->IsFunction())                                   \
-                cb = v8::Local<v8::Function>::Cast(args[--argc1]);                            \
-            int32_t argc = argc1;                                                             \
-            while (argc > (o) && (args[argc - 1]->IsUndefined() || args[argc - 1]->IsNull())) \
-                argc--;                                                                       \
-            if ((c) >= 0 && argc > (c)) {                                                     \
-                hr = CALL_E_BADPARAMCOUNT;                                                    \
-                break;                                                                        \
-            }                                                                                 \
-            if ((o) > 0 && argc < (o)) {                                                      \
-                hr = setRuntimeError(CALL_E_PARAMNOTOPTIONAL);                                \
-                break;                                                                        \
+#define METHOD_OVER(c, o)                                                                         \
+    }                                                                                             \
+    while (0)                                                                                     \
+        ;                                                                                         \
+    if (hr > CALL_E_MIN_ARG && hr < CALL_E_MAX)                                                   \
+        do {                                                                                      \
+            hr = 0;                                                                               \
+            int32_t argc = argc1;                                                                 \
+            if (!bStrict)                                                                         \
+                while (argc > (o) && (args[argc - 1]->IsUndefined() || args[argc - 1]->IsNull())) \
+                    argc--;                                                                       \
+            if ((c) >= 0 && argc > (c)) {                                                         \
+                hr = CALL_E_BADPARAMCOUNT;                                                        \
+                break;                                                                            \
+            }                                                                                     \
+            if ((o) > 0 && argc < (o)) {                                                          \
+                hr = setRuntimeError(CALL_E_PARAMNOTOPTIONAL);                                    \
+                break;                                                                            \
             }
 
 #define METHOD_ENTER()                                      \
@@ -258,7 +233,22 @@ enum {
     V8_SCOPE(isolate->m_isolate);                           \
     result_t hr = CALL_E_BADPARAMCOUNT;                     \
     bool bStrict = true;                                    \
+    int32_t argc1 = args.Length();                          \
     do {                                                    \
+        do {
+
+#define ASYNC_METHOD_ENTER()                                                                               \
+    Isolate* isolate = Isolate::current(args.GetIsolate());                                                \
+    V8_SCOPE(isolate->m_isolate);                                                                          \
+    result_t hr = CALL_E_BADPARAMCOUNT;                                                                    \
+    bool bStrict = true;                                                                                   \
+    int32_t argc1 = args.Length();                                                                         \
+    v8::Local<v8::Object> cb;                                                                              \
+    if (args.Data()->IsTrue())                                                                             \
+        cb = v8::Promise::Resolver::New(isolate->context()).FromMaybe(v8::Local<v8::Promise::Resolver>()); \
+    else if (argc1 > 0 && args[argc1 - 1]->IsFunction())                                                   \
+        cb = args[--argc1].As<v8::Object>();                                                               \
+    do {                                                                                                   \
         do {
 
 #define CONSTRUCT_INIT()                       \
@@ -290,6 +280,22 @@ enum {
 #define ASYNC_METHOD_INSTANCE(cls) \
     METHOD_INSTANCE(cls)           \
     scope l(pInst);
+
+#define LOAD_ENTER()                    \
+    result_t hr = CALL_E_BADPARAMCOUNT; \
+    bool bStrict = false;               \
+    int32_t argc1 = 1;                  \
+    OptArgs args(v);                    \
+    do {                                \
+        do {
+
+#define LOAD_RETURN() \
+    CHECK_ARGUMENT()  \
+    if (hr >= 0) {    \
+        retVal = vr;  \
+        return 0;     \
+    }                 \
+    return hr;
 
 #define CHECK_ARGUMENT()                                                                                        \
     }                                                                                                           \
@@ -361,12 +367,10 @@ enum {
     }                                                                      \
     NAMED_THROW_ERROR()
 
-#define METHOD_VOID()                         \
-    CHECK_ARGUMENT()                          \
-    if (hr >= 0) {                            \
-        args.GetReturnValue().SetUndefined(); \
-        return;                               \
-    }                                         \
+#define METHOD_VOID() \
+    CHECK_ARGUMENT()  \
+    if (hr >= 0)      \
+        return;       \
     THROW_ERROR()
 
 #define NAMED_METHOD_VOID()          \
@@ -430,16 +434,18 @@ public:                                                        \
         return getInstance((object_base*)unwrap(o));           \
     }
 
-#define DECLARE_CLASS(c)         \
-public:                          \
-    c()                          \
-    {                            \
-        c::class_info().Ref();   \
-    }                            \
-    virtual ~c()                 \
-    {                            \
-        c::class_info().Unref(); \
-    }                            \
+#define DECLARE_CLASS(c)                  \
+public:                                   \
+    c()                                   \
+    {                                     \
+        if (m_in_trace)                   \
+            c::class_info().RefClass();   \
+    }                                     \
+    virtual ~c()                          \
+    {                                     \
+        if (m_in_trace)                   \
+            c::class_info().UnrefClass(); \
+    }                                     \
     DECLARE_CLASSINFO(c)
 
 #define DECLARE_MODULE(name)                      \
@@ -639,6 +645,25 @@ public:                                                  \
     {                                                    \
     }
 
+#define LOAD_OPTION_MEMBER(r, data, elem)                                          \
+    hr = GetConfigValue(isolate, opt, BOOST_PP_STRINGIZE(elem), data->elem, true); \
+    if (hr < 0)                                                                    \
+        return hr;
+
+#define LOAD_OPTIONS(Class, Members)                                                       \
+    static Class* getInstance(v8::Local<v8::Value> v) { return nullptr; }                  \
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Class>& retVal) \
+    {                                                                                      \
+        if (!IsJSObject(v))                                                                \
+            return CALL_E_TYPEMISMATCH;                                                    \
+        v8::Local<v8::Object> opt = v.As<v8::Object>();                                    \
+        obj_ptr<Class> o = new Class();                                                    \
+        result_t hr = 0;                                                                   \
+        BOOST_PP_SEQ_FOR_EACH(LOAD_OPTION_MEMBER, o, Members)                              \
+        retVal = o;                                                                        \
+        return 0;                                                                          \
+    }
+
 #ifndef ARRAYSIZE
 #define ARRAYSIZE(a) \
     ((sizeof(a) / sizeof(*(a))) / static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
@@ -787,7 +812,6 @@ class OptArgs {
 public:
     OptArgs(const v8::FunctionCallbackInfo<v8::Value>& args, int32_t base, int32_t argc)
         : m_args(&args)
-        , m_argv(NULL)
         , m_base(base)
         , m_argc(argc)
     {
@@ -795,27 +819,29 @@ public:
             m_base = m_argc;
     }
 
-    OptArgs(const std::vector<v8::Local<v8::Value>>& argv)
-        : m_args(NULL)
-        , m_argv(&argv)
+    OptArgs(std::vector<v8::Local<v8::Value>>& argv)
+        : m_v(argv.data())
         , m_base(0)
         , m_argc((int32_t)argv.size())
     {
     }
 
+    OptArgs(v8::Local<v8::Value>& v)
+        : m_v(&v)
+        , m_base(0)
+        , m_argc(1)
+    {
+    }
+
     OptArgs(const OptArgs& a)
         : m_args(a.m_args)
-        , m_argv(a.m_argv)
+        , m_v(a.m_v)
         , m_base(a.m_base)
         , m_argc(a.m_argc)
     {
     }
 
     OptArgs()
-        : m_args(NULL)
-        , m_argv(NULL)
-        , m_base(0)
-        , m_argc(0)
     {
     }
 
@@ -826,18 +852,23 @@ public:
 
     v8::Local<v8::Value> operator[](int32_t i) const
     {
-        if (m_argv)
-            return (*m_argv)[i];
+        if (m_v)
+            return m_v[i];
 
         return (*m_args)[i + m_base];
     }
 
+    v8::Local<v8::Object> This() const
+    {
+        return v8::Local<v8::Object>();
+    }
+
     void GetData(std::vector<v8::Local<v8::Value>>& datas)
     {
-        if (m_argv) {
+        if (m_v) {
             datas.resize(m_argc);
             for (int32_t i = 0; i < m_argc; i++)
-                datas[i] = (*m_argv)[i];
+                datas[i] = m_v[i];
             return;
         }
 
@@ -847,83 +878,23 @@ public:
     }
 
 private:
-    const v8::FunctionCallbackInfo<v8::Value>* m_args;
-    const std::vector<v8::Local<v8::Value>>* m_argv;
-    int32_t m_base;
-    int32_t m_argc;
-};
-
-class Value2Args {
-public:
-    Value2Args(v8::Isolate* isolate, v8::Local<v8::Value>& v, v8::Local<v8::Value>& vr)
-        : m_isolate(isolate)
-        , m_v(v)
-        , m_vr(vr)
-    {
-    }
-
-    int32_t Length() const
-    {
-        return 1;
-    }
-
-    bool IsConstructCall() const
-    {
-        return true;
-    }
-
-    v8::Local<v8::Object> This() const
-    {
-        return v8::Local<v8::Object>();
-    }
-
-    const Value2Args& GetReturnValue() const
-    {
-        return *this;
-    }
-
-    void Set(v8::Local<v8::Value> vr) const
-    {
-        m_vr = vr;
-    }
-
-    v8::Local<v8::Value>& operator[](size_t i) const
-    {
-        return m_v;
-    }
-
-    v8::Isolate* GetIsolate() const
-    {
-        return m_isolate;
-    }
-
-private:
-    v8::Isolate* m_isolate;
-    v8::Local<v8::Value>& m_v;
-    v8::Local<v8::Value>& m_vr;
+    const v8::FunctionCallbackInfo<v8::Value>* m_args = nullptr;
+    v8::Local<v8::Value>* m_v = nullptr;
+    int32_t m_base = 0;
+    int32_t m_argc = 0;
 };
 
 template <class T>
 result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<T>& vr, bool bStrict = false)
 {
     vr = T::getInstance(v);
-    if (vr == NULL) {
-        if (bStrict)
-            return CALL_E_TYPEMISMATCH;
+    if (vr)
+        return 0;
 
-        TryCatch try_catch;
+    if (bStrict)
+        return CALL_E_TYPEMISMATCH;
 
-        v8::Local<v8::Value> vr1;
-        Value2Args a(isolate->m_isolate, v, vr1);
-
-        T::__new(a);
-        vr = T::getInstance(vr1);
-
-        if (vr == NULL)
-            return CALL_E_TYPEMISMATCH;
-    }
-
-    return 0;
+    return T::load(isolate, v, vr);
 }
 
 class Buffer_base;
@@ -991,10 +962,33 @@ inline result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, v8::L
     return 0;
 }
 
-template <typename T>
-inline result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, T& vr, bool bStrict = false)
+template <class T>
+inline result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, std::vector<T>& vr, bool bStrict = false)
 {
-    return GetArgumentValue(v, vr, bStrict);
+    if (v.IsEmpty())
+        return CALL_E_TYPEMISMATCH;
+
+    if (!v->IsArray())
+        return CALL_E_TYPEMISMATCH;
+
+    v8::Local<v8::Array> arr = v8::Local<v8::Array>::Cast(v);
+    v8::Local<v8::Context> context = isolate->context();
+
+    std::vector<T> r = std::vector<T>();
+
+    for (uint32_t i = 0; i < arr->Length(); i++) {
+        v8::Local<v8::Value> v1 = arr->Get(context, i).ToLocalChecked();
+        T n;
+        result_t hr = GetArgumentValue(isolate, v1, n, false);
+        if (hr < 0)
+            return hr;
+
+        r.push_back(n);
+    }
+
+    vr = r;
+
+    return 0;
 }
 
 result_t setRuntimeError(result_t code, const char* err = nullptr);
@@ -1007,6 +1001,19 @@ result_t GetConfigValue(Isolate* isolate, v8::Local<v8::Object> o, const char* k
         return setRuntimeError(CALL_E_PARAMNOTOPTIONAL, key);
 
     return GetArgumentValue(isolate, v, n, bStrict);
+}
+
+template <typename T>
+result_t GetConfigValue(Isolate* isolate, v8::Local<v8::Object> o, const char* key, std::optional<T>& n, bool bStrict = false)
+{
+    T n1;
+    result_t hr = GetConfigValue(isolate, o, key, n1, bStrict);
+    if (hr >= 0)
+        n = n1;
+    else if (hr != CALL_E_PARAMNOTOPTIONAL)
+        return hr;
+
+    return 0;
 }
 
 template <typename T>

@@ -1,0 +1,373 @@
+/*
+ * WebView.cpp
+ *
+ *  Created on: Sep 22, 2024
+ *      Author: lion
+ */
+
+#ifdef _WIN32
+
+#include <uv/include/uv.h>
+#include <windows.h>
+#include <wrl.h>
+#include <shlwapi.h>
+#include <shlobj.h>
+#include "loader/WebView2.h"
+#include "loader/WebView2EnvironmentOptions.h"
+
+#include "object.h"
+#include "ifs/gui.h"
+#include "ifs/fs.h"
+#include "ifs/encoding.h"
+#include "ifs/mime.h"
+#include "utf8.h"
+#include "WebView.h"
+#include "EventInfo.h"
+#include "Buffer.h"
+
+namespace fibjs {
+
+ICoreWebView2Environment* g_env = nullptr;
+extern const wchar_t* szWndClassMain;
+
+static const wchar_t* s_bridge_code
+    = L"window.app = (function(){"
+      "    function postRequest(req) { window.chrome.webview.postMessage(req); }"
+      "    const pending = {};"
+      "    function generateId() {"
+      "        while(true) { const id = Math.random().toString(36).substring(2); if(!pending[id]) return id; }"
+      "    }"
+      "    function wrap(m, fn) {"
+      "        return new Proxy(fn, {"
+      "            get: function(target, prop) {"
+      "                const method = m === '' ? prop : m + '.' + prop;"
+      "                return wrap(method, function(...params) { return new Promise((resolve, reject) => {"
+      "                    const id = generateId(); pending[id] = {resolve, reject};"
+      "                    postRequest({id, method, params});"
+      "                });});"
+      "            },"
+      "            set: function(target, method, value) { throw new Error('not allowed'); }"
+      "        });"
+      "    }"
+      "    return wrap('', function(res) {"
+      "        const p = pending[res.id];"
+      "        if (p) {"
+      "            delete pending[res.id];"
+      "            if (res.error) { p.reject(new Error(res.error)); } else { p.resolve(res.result); }"
+      "        }"
+      "    });"
+      "})();"
+      "window.postMessage = function(message) { window.chrome.webview.postMessage(message); };"
+      "window.close = function() { window.chrome.webview.postMessage({type:'close'}); };"
+      "window.minimize = function() { window.chrome.webview.postMessage({type:'minimize'}); };"
+      "window.maximize = function() { window.chrome.webview.postMessage({type:'maximize'}); };"
+      "window.drag = function() { window.chrome.webview.postMessage({type:'drag'}); };";
+
+exlib::string fs_url_to_path(const exlib::string& url)
+{
+    obj_ptr<UrlObject_base> u;
+
+    result_t hr = url_base::parse(url, false, false, u);
+    if (hr < 0)
+        return "";
+
+    u->set_protocol("file:");
+
+    exlib::string path;
+    url_base::fileURLToPath(u, path);
+
+    return path;
+}
+
+std::wstring GetUserDataFolderPath()
+{
+    wchar_t path[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, path))) {
+        return std::wstring(path) + L"\\.fibjs";
+    }
+    return L"";
+}
+
+Microsoft::WRL::ComPtr<CoreWebView2EnvironmentOptions> GetWebView2Options()
+{
+    auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options4;
+    if (SUCCEEDED(options.As(&options4))) {
+        auto scheme = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"fs");
+        const wchar_t* everything = L"*";
+        scheme->SetAllowedOrigins(1, &everything);
+        scheme->put_TreatAsSecure(TRUE);
+        scheme->put_HasAuthorityComponent(FALSE);
+
+        std::vector<ICoreWebView2CustomSchemeRegistration*> registrations;
+        registrations.push_back(scheme.Get());
+        options4->SetCustomSchemeRegistrations(registrations.size(),
+            registrations.data());
+    }
+    return options;
+}
+
+void init_WebView_Environment()
+{
+    if (!g_env) {
+        std::wstring userDataFolder = GetUserDataFolderPath();
+        auto options = GetWebView2Options();
+        HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(nullptr, userDataFolder.c_str(), options.Get(),
+            Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
+                [](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+                    if (FAILED(result)) {
+                        printf("Failed to create WebView2 environment. Error: 0x%08X\n", result);
+                        exit(-1);
+                    }
+
+                    g_env = env;
+                    g_env->AddRef();
+
+                    return S_OK;
+                })
+                .Get());
+        if (FAILED(hr)) {
+            printf("Failed to create WebView2 environment. Error: 0x%08X\n", hr);
+            exit(-1);
+        }
+    }
+}
+
+result_t WebView::createWebView()
+{
+    init_WebView_Environment();
+
+    HINSTANCE hInstance = GetModuleHandle(NULL);
+    m_window = CreateWindowExW(0, szWndClassMain, L"",
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+        nullptr, nullptr, hInstance, nullptr);
+
+    g_env->CreateCoreWebView2Controller((HWND)m_window,
+        Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+            [this](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+                if (FAILED(result)) {
+                    printf("Failed to create WebView2 controller. Error: 0x%08X\n", result);
+                    return result;
+                }
+
+                RECT bounds;
+                GetClientRect((HWND)m_window, &bounds);
+                controller->put_Bounds(bounds);
+
+                SetWindowLongPtr((HWND)m_window, 0, (LONG_PTR)controller);
+                controller->AddRef();
+
+                ICoreWebView2* webView = nullptr;
+                controller->get_CoreWebView2(&webView);
+
+                controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+
+                if (!m_options->devtools.value()) {
+                    ICoreWebView2Settings* settings = nullptr;
+                    webView->get_Settings(&settings);
+                    settings->put_AreDevToolsEnabled(FALSE);
+                    settings->Release();
+                }
+
+                webView->add_WebMessageReceived(
+                    Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
+                        [this](ICoreWebView2* sender, ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
+                            LPWSTR message = nullptr;
+                            HRESULT hr = args->TryGetWebMessageAsString(&message);
+                            if (SUCCEEDED(hr)) {
+                                exlib::string receivedMessage = utf16to8String((const char16_t*)message);
+                                CoTaskMemFree(message);
+
+                                fibjs::obj_ptr<fibjs::EventInfo> ei = new fibjs::EventInfo(this, "message");
+                                ei->add("data", receivedMessage.c_str());
+                                _emit("message", ei);
+                            } else {
+                                hr = args->get_WebMessageAsJson(&message);
+                                if (SUCCEEDED(hr)) {
+                                    if (!qstrcmp(message, LR"({"type":"close"})"))
+                                        internal_close();
+                                    else if (!qstrcmp(message, LR"({"type":"minimize"})"))
+                                        internal_minimize();
+                                    else if (!qstrcmp(message, LR"({"type":"maximize"})"))
+                                        internal_maximize();
+                                    else if (!qstrcmp(message, LR"({"type":"drag"})")) {
+                                        ReleaseCapture();
+                                        PostMessage((HWND)m_window, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+                                    } else
+                                        app_rpc(utf16to8String((const char16_t*)message));
+
+                                    CoTaskMemFree(message);
+                                }
+                            }
+                            return S_OK;
+                        })
+                        .Get(),
+                    nullptr);
+
+                webView->add_DocumentTitleChanged(
+                    Microsoft::WRL::Callback<ICoreWebView2DocumentTitleChangedEventHandler>(
+                        [this](ICoreWebView2* sender, IUnknown* args) -> HRESULT {
+                            LPWSTR title = nullptr;
+                            HRESULT hr = sender->get_DocumentTitle(&title);
+                            if (SUCCEEDED(hr)) {
+                                SetWindowTextW((HWND)m_window, title);
+                                CoTaskMemFree(title);
+                            }
+                            return S_OK;
+                        })
+                        .Get(),
+                    nullptr);
+
+                webView->add_NavigationStarting(
+                    Microsoft::WRL::Callback<ICoreWebView2NavigationStartingEventHandler>(
+                        [this](ICoreWebView2* sender, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT {
+                            m_isLoading = true;
+
+                            obj_ptr<EventInfo> ei = new EventInfo(this, "loading");
+
+                            LPWSTR uri = nullptr;
+                            args->get_Uri(&uri);
+                            ei->add("url", utf16to8String((const char16_t*)uri));
+                            CoTaskMemFree(uri);
+
+                            ei->emit();
+                            return S_OK;
+                        })
+                        .Get(),
+                    nullptr);
+
+                webView->add_ContentLoading(
+                    Microsoft::WRL::Callback<ICoreWebView2ContentLoadingEventHandler>(
+                        [this](ICoreWebView2* sender, IUnknown* args) -> HRESULT {
+                            sender->ExecuteScript(s_bridge_code, nullptr);
+
+                            m_webview = sender;
+                            m_ready->set();
+
+                            return S_OK;
+                        })
+                        .Get(),
+                    nullptr);
+
+                webView->add_NavigationCompleted(
+                    Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
+                        [this](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
+                            m_isLoading = false;
+                            obj_ptr<EventInfo> ei = new EventInfo(this, "load");
+
+                            LPWSTR uri = nullptr;
+                            sender->get_Source(&uri);
+                            exlib::string surl = utf16to8String((const char16_t*)uri);
+                            ei->add("url", surl);
+                            CoTaskMemFree(uri);
+
+                            ei->emit();
+                            postWaitFor(surl);
+
+                            return S_OK;
+                        })
+                        .Get(),
+                    nullptr);
+
+                webView->add_WebResourceRequested(
+                    Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+                        [](ICoreWebView2* sender, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT {
+                            Microsoft::WRL::ComPtr<ICoreWebView2WebResourceRequest> request;
+                            args->get_Request(&request);
+
+                            LPWSTR uri = nullptr;
+                            request->get_Uri(&uri);
+                            exlib::string url = utf16to8String((const char16_t*)uri);
+                            CoTaskMemFree(uri);
+
+                            ICoreWebView2Deferral* deferral;
+                            args->GetDeferral(&deferral);
+
+                            args->AddRef();
+                            async([url, args, deferral]() {
+                                exlib::string fname = fs_url_to_path(url);
+                                Variant var;
+                                result_t hr = fs_base::cc_readFile(fname, "", var, Isolate::main());
+
+                                if (hr >= 0) {
+                                    async([fname, args, deferral, var]() {
+                                        Buffer* _buf = (Buffer*)var.object();
+
+                                        Microsoft::WRL::ComPtr<IStream> responseStream;
+                                        responseStream = _buf ? SHCreateMemStream(_buf->data(), _buf->length())
+                                                              : SHCreateMemStream((const BYTE*)"", 0);
+
+                                        exlib::string mtype;
+                                        mime_base::getType(fname, mtype);
+
+                                        mtype = "Content-Type: " + mtype;
+                                        exlib::wstring wmtype = utf8to16String(mtype);
+
+                                        Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
+                                        g_env->CreateWebResourceResponse(
+                                            responseStream.Get(), 200, L"OK", (LPCWSTR)wmtype.c_str(), &response);
+
+                                        args->put_Response(response.Get());
+                                        deferral->Complete();
+
+                                        args->Release();
+                                        deferral->Release();
+                                    },
+                                        CALL_E_GUICALL);
+                                } else {
+                                    async([fname, args, deferral]() {
+                                        exlib::string page = "<html><body><h1>Error</h1><p>File not found at path:<br>" + fname + "</p></body></html>";
+                                        Microsoft::WRL::ComPtr<IStream> responseStream;
+                                        responseStream = SHCreateMemStream((const BYTE*)page.c_str(), page.length());
+
+                                        Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
+                                        g_env->CreateWebResourceResponse(
+                                            responseStream.Get(), 404, L"Not Found", L"Content-Type: text/html", &response);
+
+                                        args->put_Response(response.Get());
+                                        deferral->Complete();
+
+                                        args->Release();
+                                        deferral->Release();
+                                    },
+                                        CALL_E_GUICALL);
+                                }
+                            });
+
+                            return S_OK;
+                        })
+                        .Get(),
+                    nullptr);
+
+                webView->AddWebResourceRequestedFilter(L"fs:*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+
+                exlib::string url;
+                if (m_options->url.has_value())
+                    url = m_options->url.value();
+                else if (m_options->file.has_value()) {
+                    obj_ptr<UrlObject_base> u;
+                    result_t hr = url_base::pathToFileURL(m_options->file.value(), u);
+                    if (hr < 0)
+                        return hr;
+
+                    u->set_protocol("fs:");
+                    u->set_slashes(true);
+
+                    u->get_href(url);
+                } else
+                    url = "about:blank";
+
+                exlib::wstring wurl = utf8to16String(url);
+                webView->Navigate((LPCWSTR)wurl.c_str());
+
+                return S_OK;
+            })
+            .Get());
+
+    config();
+
+    return 0;
+}
+}
+
+#endif

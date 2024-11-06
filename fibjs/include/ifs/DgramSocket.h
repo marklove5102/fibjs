@@ -51,6 +51,9 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<DgramSocket_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_bind(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_send(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -111,9 +114,9 @@ inline ClassInfo& DgramSocket_base::class_info()
 inline void DgramSocket_base::s_bind(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(DgramSocket_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 0);
+    METHOD_OVER(2, 0);
 
     OPT_ARG(int32_t, 0, 0);
     OPT_ARG(exlib::string, 1, "");
@@ -123,7 +126,7 @@ inline void DgramSocket_base::s_bind(const v8::FunctionCallbackInfo<v8::Value>& 
     else
         hr = pInst->ac_bind(v0, v1);
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(v8::Local<v8::Object>, 0);
 
@@ -140,9 +143,9 @@ inline void DgramSocket_base::s_send(const v8::FunctionCallbackInfo<v8::Value>& 
     int32_t vr;
 
     ASYNC_METHOD_INSTANCE(DgramSocket_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 2);
+    METHOD_OVER(3, 2);
 
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(int32_t, 1);
@@ -153,7 +156,7 @@ inline void DgramSocket_base::s_send(const v8::FunctionCallbackInfo<v8::Value>& 
     else
         hr = pInst->ac_send(v0, v1, v2, vr);
 
-    ASYNC_METHOD_OVER(5, 4);
+    METHOD_OVER(5, 4);
 
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(int32_t, 1);

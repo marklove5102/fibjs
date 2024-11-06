@@ -44,6 +44,9 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<db_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_static_open(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_openMySQL(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -101,9 +104,9 @@ inline void db_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& ar
 {
     obj_ptr<object_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -119,9 +122,9 @@ inline void db_base::s_static_openMySQL(const v8::FunctionCallbackInfo<v8::Value
 {
     obj_ptr<MySQL_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -137,9 +140,9 @@ inline void db_base::s_static_openSQLite(const v8::FunctionCallbackInfo<v8::Valu
 {
     obj_ptr<SQLite_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -155,9 +158,9 @@ inline void db_base::s_static_openOdbc(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<DbConnection_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -173,9 +176,9 @@ inline void db_base::s_static_openMSSQL(const v8::FunctionCallbackInfo<v8::Value
 {
     obj_ptr<DbConnection_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -191,9 +194,9 @@ inline void db_base::s_static_openPSQL(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<DbConnection_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -209,9 +212,9 @@ inline void db_base::s_static_openLevelDB(const v8::FunctionCallbackInfo<v8::Val
 {
     obj_ptr<LevelDB_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -227,9 +230,9 @@ inline void db_base::s_static_openRedis(const v8::FunctionCallbackInfo<v8::Value
 {
     obj_ptr<Redis_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 

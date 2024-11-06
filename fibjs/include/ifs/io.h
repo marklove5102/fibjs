@@ -37,6 +37,9 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<io_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_static_copyStream(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_bridge(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -81,9 +84,9 @@ inline void io_base::s_static_copyStream(const v8::FunctionCallbackInfo<v8::Valu
 {
     int64_t vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 2);
+    METHOD_OVER(3, 2);
 
     ARG(obj_ptr<Stream_base>, 0);
     ARG(obj_ptr<Stream_base>, 1);
@@ -99,9 +102,9 @@ inline void io_base::s_static_copyStream(const v8::FunctionCallbackInfo<v8::Valu
 
 inline void io_base::s_static_bridge(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(obj_ptr<Stream_base>, 0);
     ARG(obj_ptr<Stream_base>, 1);

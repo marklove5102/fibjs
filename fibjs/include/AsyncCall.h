@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <functional>
 #include <exlib/include/fiber.h>
 #include "utils.h"
 #include "Runtime.h"
@@ -79,8 +80,8 @@ private:
 
 class AsyncCall : public AsyncEvent {
 public:
-    AsyncCall(void** a)
-        : AsyncEvent(Isolate::current())
+    AsyncCall(void** a, Isolate* isolate)
+        : AsyncEvent(isolate)
         , args(a)
     {
     }
@@ -137,7 +138,7 @@ private:
 
 class CAsyncCall : public AsyncEvent {
 public:
-    CAsyncCall(void** a, Isolate* isolate = NULL)
+    CAsyncCall(void** a, Isolate* isolate)
         : AsyncEvent(isolate)
         , args(a)
     {
@@ -303,31 +304,7 @@ private:
     }                                                \
     int32_t _##fn(int32_t n)
 
-template <typename T, typename T1>
-class AsyncFunc : public AsyncEvent {
-public:
-    AsyncFunc(T func, T1 v)
-        : m_func(func)
-        , m_v(v)
-    {
-    }
-
-    virtual void invoke()
-    {
-        m_func(m_v);
-        delete this;
-    }
-
-private:
-    T m_func;
-    T1 m_v;
-};
-
-template <typename T, typename T1>
-void asyncCall(T func, T1 v, int32_t mode = CALL_E_NOSYNC)
-{
-    (new AsyncFunc<T, T1>(func, v))->async(mode);
-}
+void async(std::function<void(void)> func, int32_t mode = CALL_E_NOSYNC);
 
 template <typename T>
 class _at {
@@ -373,6 +350,28 @@ private:
     obj_ptr<T> m_v;
 };
 
+template <typename T>
+class _at<std::vector<T>> {
+public:
+    _at(std::vector<T>& v)
+        : m_v(std::move(v))
+    {
+    }
+
+    std::vector<T>& c_value()
+    {
+        return m_v;
+    }
+
+    std::vector<T>& value()
+    {
+        return m_v;
+    }
+
+private:
+    std::vector<T> m_v;
+};
+
 template <>
 class _at<v8::Local<v8::Object>> {
 public:
@@ -400,7 +399,7 @@ private:
 class NType;
 class AsyncCallBack : public AsyncEvent {
 public:
-    AsyncCallBack(v8::Local<v8::Function> cb, object_base* pThis = NULL);
+    AsyncCallBack(v8::Local<v8::Object> cb, object_base* pThis = NULL);
     ~AsyncCallBack();
 
 public:
@@ -458,7 +457,8 @@ protected:
 
 protected:
     obj_ptr<object_base> m_pThis;
-    v8::Global<v8::Function> m_cb;
+    v8::Global<v8::Object> m_cb;
+    bool m_is_promise;
     obj_ptr<NType> m_result;
 
 private:

@@ -38,11 +38,19 @@ public:
     static result_t listSubKey(int32_t root, exlib::string key, obj_ptr<NArray>& retVal);
     static result_t listValue(int32_t root, exlib::string key, obj_ptr<NArray>& retVal);
     static result_t get(int32_t root, exlib::string key, v8::Local<v8::Value>& retVal);
+    static result_t get(int32_t root, exlib::string key, exlib::string name, v8::Local<v8::Value>& retVal);
     static result_t set(int32_t root, exlib::string key, double value, int32_t type);
     static result_t set(int32_t root, exlib::string key, exlib::string value, int32_t type);
-    static result_t set(int32_t root, exlib::string key, v8::Local<v8::Array> value);
+    static result_t set(int32_t root, exlib::string key, std::vector<exlib::string>& values);
     static result_t set(int32_t root, exlib::string key, Buffer_base* value);
+    static result_t set(int32_t root, exlib::string key, exlib::string name, double value, int32_t type);
+    static result_t set(int32_t root, exlib::string key, exlib::string name, exlib::string value, int32_t type);
+    static result_t set(int32_t root, exlib::string key, exlib::string name, std::vector<exlib::string>& values);
+    static result_t set(int32_t root, exlib::string key, exlib::string name, Buffer_base* value);
+    static result_t has(int32_t root, exlib::string key, bool& retVal);
+    static result_t has(int32_t root, exlib::string key, exlib::string name, bool& retVal);
     static result_t del(int32_t root, exlib::string key);
+    static result_t del(int32_t root, exlib::string key, exlib::string name);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -53,11 +61,15 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<registry_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_static_listSubKey(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_listValue(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_get(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_set(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_has(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_del(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 }
@@ -72,6 +84,7 @@ inline ClassInfo& registry_base::class_info()
         { "listValue", s_static_listValue, true, ClassData::ASYNC_SYNC },
         { "get", s_static_get, true, ClassData::ASYNC_SYNC },
         { "set", s_static_set, true, ClassData::ASYNC_SYNC },
+        { "has", s_static_has, true, ClassData::ASYNC_SYNC },
         { "del", s_static_del, true, ClassData::ASYNC_SYNC }
     };
 
@@ -143,6 +156,14 @@ inline void registry_base::s_static_get(const v8::FunctionCallbackInfo<v8::Value
 
     hr = get(v0, v1, vr);
 
+    METHOD_OVER(3, 3);
+
+    ARG(int32_t, 0);
+    ARG(exlib::string, 1);
+    ARG(exlib::string, 2);
+
+    hr = get(v0, v1, v2, vr);
+
     METHOD_RETURN();
 }
 
@@ -172,7 +193,7 @@ inline void registry_base::s_static_set(const v8::FunctionCallbackInfo<v8::Value
 
     ARG(int32_t, 0);
     ARG(exlib::string, 1);
-    ARG(v8::Local<v8::Array>, 2);
+    ARG(std::vector<exlib::string>, 2);
 
     hr = set(v0, v1, v2);
 
@@ -184,7 +205,69 @@ inline void registry_base::s_static_set(const v8::FunctionCallbackInfo<v8::Value
 
     hr = set(v0, v1, v2);
 
+    METHOD_OVER(5, 4);
+
+    ARG(int32_t, 0);
+    ARG(exlib::string, 1);
+    ARG(exlib::string, 2);
+    ARG(double, 3);
+    OPT_ARG(int32_t, 4, C_DWORD);
+
+    hr = set(v0, v1, v2, v3, v4);
+
+    METHOD_OVER(5, 4);
+
+    ARG(int32_t, 0);
+    ARG(exlib::string, 1);
+    ARG(exlib::string, 2);
+    ARG(exlib::string, 3);
+    OPT_ARG(int32_t, 4, C_SZ);
+
+    hr = set(v0, v1, v2, v3, v4);
+
+    METHOD_OVER(4, 4);
+
+    ARG(int32_t, 0);
+    ARG(exlib::string, 1);
+    ARG(exlib::string, 2);
+    ARG(std::vector<exlib::string>, 3);
+
+    hr = set(v0, v1, v2, v3);
+
+    METHOD_OVER(4, 4);
+
+    ARG(int32_t, 0);
+    ARG(exlib::string, 1);
+    ARG(exlib::string, 2);
+    ARG(obj_ptr<Buffer_base>, 3);
+
+    hr = set(v0, v1, v2, v3);
+
     METHOD_VOID();
+}
+
+inline void registry_base::s_static_has(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    bool vr;
+
+    METHOD_ENTER();
+
+    METHOD_OVER(2, 2);
+
+    ARG(int32_t, 0);
+    ARG(exlib::string, 1);
+
+    hr = has(v0, v1, vr);
+
+    METHOD_OVER(3, 3);
+
+    ARG(int32_t, 0);
+    ARG(exlib::string, 1);
+    ARG(exlib::string, 2);
+
+    hr = has(v0, v1, v2, vr);
+
+    METHOD_RETURN();
 }
 
 inline void registry_base::s_static_del(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -197,6 +280,14 @@ inline void registry_base::s_static_del(const v8::FunctionCallbackInfo<v8::Value
     ARG(exlib::string, 1);
 
     hr = del(v0, v1);
+
+    METHOD_OVER(3, 3);
+
+    ARG(int32_t, 0);
+    ARG(exlib::string, 1);
+    ARG(exlib::string, 2);
+
+    hr = del(v0, v1, v2);
 
     METHOD_VOID();
 }

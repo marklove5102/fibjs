@@ -133,11 +133,12 @@ Isolate::Isolate(exlib::string jsFilename, exlib::string jsCode)
     , m_flake_host(0)
     , m_flake_count(0)
     , m_console_colored(true)
-    , m_loglevel(console_base::C_NOTSET)
     , m_defaultMaxListeners(10)
     , m_exitCode(0)
     , m_enable_FileSystem(true)
     , m_safe_buffer(false)
+    , m_file_cache(1024, 30, 30)
+    , m_realpath_cache(1024, 30, 30)
 {
     s_isolates.putTail(this);
 

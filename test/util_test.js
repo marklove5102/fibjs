@@ -1729,6 +1729,9 @@ describe('util', () => {
                 assert.equal(fs.promises.open, util.promisify(fs.open));
                 assert.equal(util.callbackify(fs.promises.open), fs.open);
                 assert.equal(util.sync(fs.promises.open), fs.open);
+
+                assert.equal(fs.promises.open, fs.openAsync);
+                assert.equal(fs.promises.openAsync, fs.openAsync);
             });
         });
 
@@ -1749,6 +1752,104 @@ describe('util', () => {
                 assert.equal(f1.read, util.promisify(f.read));
                 assert.equal(util.callbackify(f1.read), f.read);
                 assert.equal(util.sync(f1.read), f.read);
+
+                assert.equal(f1.read, f.readAsync);
+                assert.equal(f1.readAsync, f.readAsync);
+            });
+        });
+    });
+
+    describe('debuglog', () => {
+        it("is function", () => {
+            const debuglog = util.debuglog('test');
+            assert.isFunction(debuglog);
+            assert.equal(debuglog.constructor.name, 'Logger');
+        });
+
+        it("disable default", () => {
+            const debuglog = util.debuglog('test');
+            assert.isFalse(debuglog.enabled);
+        });
+
+        describe("NODE_DEBUG", () => {
+            it("simple enable", () => {
+                process.env.NODE_DEBUG = 'test';
+                const debuglog = util.debuglog('test');
+                assert.isTrue(debuglog.enabled);
+            });
+
+            it("not match", () => {
+                process.env.NODE_DEBUG = 'test1';
+                const debuglog = util.debuglog('test');
+                assert.isFalse(debuglog.enabled);
+            });
+
+            it("online check", () => {
+                process.env.NODE_DEBUG = 'test';
+                const debuglog = util.debuglog('test');
+                assert.isTrue(debuglog.enabled);
+
+                process.env.NODE_DEBUG = 'test1';
+                assert.isFalse(debuglog.enabled);
+            });
+
+            it("multi enable", () => {
+                process.env.NODE_DEBUG = 'test1,test';
+                const debuglog = util.debuglog('test');
+                assert.isTrue(debuglog.enabled);
+
+                process.env.NODE_DEBUG = 'test,test1';
+                assert.isTrue(debuglog.enabled);
+
+                process.env.NODE_DEBUG = 'test1,test,test2';
+                assert.isTrue(debuglog.enabled);
+            });
+
+            it("not in multi enable", () => {
+                process.env.NODE_DEBUG = 'test1,test2';
+                const debuglog = util.debuglog('test');
+                assert.isFalse(debuglog.enabled);
+            });
+
+            it("no space", () => {
+                process.env.NODE_DEBUG = 'test1, test';
+                const debuglog = util.debuglog('test');
+                assert.isFalse(debuglog.enabled);
+            });
+        });
+
+        describe('callback', () => {
+            it("disable", () => {
+                process.env.NODE_DEBUG = '';
+                var newlog = '';
+                const debuglog = util.debuglog('test', fn => {
+                    newlog = fn;
+                });
+
+                assert.equal(newlog, '');
+                debuglog('test');
+
+                assert.isFunction(newlog);
+                assert.equal(newlog.constructor.name, 'Logger');
+
+                assert.equal(newlog.debug, newlog);
+                assert.equal(newlog.info, newlog);
+                assert.equal(newlog.log, newlog);
+                assert.equal(newlog.notice, newlog);
+                assert.equal(newlog.error, newlog);
+                assert.equal(newlog.crit, newlog);
+            });
+
+            it("enable", () => {
+                process.env.NODE_DEBUG = 'test';
+                var newlog = '';
+                const debuglog = util.debuglog('test', fn => {
+                    newlog = fn;
+                });
+
+                assert.equal(newlog, '');
+                debuglog('test');
+                assert.equal(newlog, debuglog);
             });
         });
     });

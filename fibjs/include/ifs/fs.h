@@ -99,6 +99,9 @@ public:
             isolate->NewString("not a constructor"));
     }
 
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<fs_base>& retVal)
+    { return CALL_E_TYPEMISMATCH; }
+
 public:
     static void s_static_exists(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_access(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -269,9 +272,9 @@ inline void fs_base::s_static_exists(const v8::FunctionCallbackInfo<v8::Value>& 
 {
     bool vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -285,9 +288,9 @@ inline void fs_base::s_static_exists(const v8::FunctionCallbackInfo<v8::Value>& 
 
 inline void fs_base::s_static_access(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(int32_t, 1, 0);
@@ -302,9 +305,9 @@ inline void fs_base::s_static_access(const v8::FunctionCallbackInfo<v8::Value>& 
 
 inline void fs_base::s_static_link(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(exlib::string, 1);
@@ -319,9 +322,9 @@ inline void fs_base::s_static_link(const v8::FunctionCallbackInfo<v8::Value>& ar
 
 inline void fs_base::s_static_unlink(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -335,9 +338,9 @@ inline void fs_base::s_static_unlink(const v8::FunctionCallbackInfo<v8::Value>& 
 
 inline void fs_base::s_static_mkdir(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(int32_t, 1, 0777);
@@ -347,7 +350,7 @@ inline void fs_base::s_static_mkdir(const v8::FunctionCallbackInfo<v8::Value>& a
     else
         hr = ac_mkdir(v0, v1);
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(v8::Local<v8::Object>, 1);
@@ -362,9 +365,9 @@ inline void fs_base::s_static_mkdir(const v8::FunctionCallbackInfo<v8::Value>& a
 
 inline void fs_base::s_static_rmdir(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -378,9 +381,9 @@ inline void fs_base::s_static_rmdir(const v8::FunctionCallbackInfo<v8::Value>& a
 
 inline void fs_base::s_static_rename(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(exlib::string, 1);
@@ -395,9 +398,9 @@ inline void fs_base::s_static_rename(const v8::FunctionCallbackInfo<v8::Value>& 
 
 inline void fs_base::s_static_copyFile(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 2);
+    METHOD_OVER(3, 2);
 
     ARG(exlib::string, 0);
     ARG(exlib::string, 1);
@@ -413,9 +416,9 @@ inline void fs_base::s_static_copyFile(const v8::FunctionCallbackInfo<v8::Value>
 
 inline void fs_base::s_static_chmod(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(int32_t, 1);
@@ -430,9 +433,9 @@ inline void fs_base::s_static_chmod(const v8::FunctionCallbackInfo<v8::Value>& a
 
 inline void fs_base::s_static_lchmod(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(int32_t, 1);
@@ -447,9 +450,9 @@ inline void fs_base::s_static_lchmod(const v8::FunctionCallbackInfo<v8::Value>& 
 
 inline void fs_base::s_static_chown(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 3);
+    METHOD_OVER(3, 3);
 
     ARG(exlib::string, 0);
     ARG(int32_t, 1);
@@ -465,9 +468,9 @@ inline void fs_base::s_static_chown(const v8::FunctionCallbackInfo<v8::Value>& a
 
 inline void fs_base::s_static_lchown(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 3);
+    METHOD_OVER(3, 3);
 
     ARG(exlib::string, 0);
     ARG(int32_t, 1);
@@ -485,9 +488,9 @@ inline void fs_base::s_static_stat(const v8::FunctionCallbackInfo<v8::Value>& ar
 {
     obj_ptr<Stat_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -503,9 +506,9 @@ inline void fs_base::s_static_lstat(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     obj_ptr<Stat_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -521,9 +524,9 @@ inline void fs_base::s_static_fstat(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     obj_ptr<Stat_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(obj_ptr<FileHandle_base>, 0);
 
@@ -539,9 +542,9 @@ inline void fs_base::s_static_readlink(const v8::FunctionCallbackInfo<v8::Value>
 {
     exlib::string vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -557,9 +560,9 @@ inline void fs_base::s_static_realpath(const v8::FunctionCallbackInfo<v8::Value>
 {
     exlib::string vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -573,9 +576,9 @@ inline void fs_base::s_static_realpath(const v8::FunctionCallbackInfo<v8::Value>
 
 inline void fs_base::s_static_symlink(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 2);
+    METHOD_OVER(3, 2);
 
     ARG(exlib::string, 0);
     ARG(exlib::string, 1);
@@ -591,9 +594,9 @@ inline void fs_base::s_static_symlink(const v8::FunctionCallbackInfo<v8::Value>&
 
 inline void fs_base::s_static_truncate(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(int32_t, 1);
@@ -610,9 +613,9 @@ inline void fs_base::s_static_read(const v8::FunctionCallbackInfo<v8::Value>& ar
 {
     int32_t vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(5, 2);
+    METHOD_OVER(5, 2);
 
     ARG(obj_ptr<FileHandle_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
@@ -630,9 +633,9 @@ inline void fs_base::s_static_read(const v8::FunctionCallbackInfo<v8::Value>& ar
 
 inline void fs_base::s_static_fchmod(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(obj_ptr<FileHandle_base>, 0);
     ARG(int32_t, 1);
@@ -647,9 +650,9 @@ inline void fs_base::s_static_fchmod(const v8::FunctionCallbackInfo<v8::Value>& 
 
 inline void fs_base::s_static_fchown(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 3);
+    METHOD_OVER(3, 3);
 
     ARG(obj_ptr<FileHandle_base>, 0);
     ARG(int32_t, 1);
@@ -665,9 +668,9 @@ inline void fs_base::s_static_fchown(const v8::FunctionCallbackInfo<v8::Value>& 
 
 inline void fs_base::s_static_fdatasync(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(obj_ptr<FileHandle_base>, 0);
 
@@ -681,9 +684,9 @@ inline void fs_base::s_static_fdatasync(const v8::FunctionCallbackInfo<v8::Value
 
 inline void fs_base::s_static_fsync(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(obj_ptr<FileHandle_base>, 0);
 
@@ -699,9 +702,9 @@ inline void fs_base::s_static_readdir(const v8::FunctionCallbackInfo<v8::Value>&
 {
     obj_ptr<NArray> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -710,7 +713,7 @@ inline void fs_base::s_static_readdir(const v8::FunctionCallbackInfo<v8::Value>&
     else
         hr = ac_readdir(v0, vr);
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
@@ -727,9 +730,9 @@ inline void fs_base::s_static_openFile(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<SeekableStream_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(exlib::string, 1, "r");
@@ -746,9 +749,9 @@ inline void fs_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& ar
 {
     obj_ptr<FileHandle_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 1);
+    METHOD_OVER(3, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(exlib::string, 1, "r");
@@ -764,9 +767,9 @@ inline void fs_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& ar
 
 inline void fs_base::s_static_close(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(obj_ptr<FileHandle_base>, 0);
 
@@ -782,9 +785,9 @@ inline void fs_base::s_static_openTextStream(const v8::FunctionCallbackInfo<v8::
 {
     obj_ptr<BufferedStream_base> vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(exlib::string, 1, "r");
@@ -801,9 +804,9 @@ inline void fs_base::s_static_readTextFile(const v8::FunctionCallbackInfo<v8::Va
 {
     exlib::string vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(1, 1);
+    METHOD_OVER(1, 1);
 
     ARG(exlib::string, 0);
 
@@ -819,9 +822,9 @@ inline void fs_base::s_static_readFile(const v8::FunctionCallbackInfo<v8::Value>
 {
     Variant vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
     OPT_ARG(exlib::string, 1, "");
@@ -831,7 +834,7 @@ inline void fs_base::s_static_readFile(const v8::FunctionCallbackInfo<v8::Value>
     else
         hr = ac_readFile(v0, v1, vr);
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(v8::Local<v8::Object>, 1);
@@ -864,9 +867,9 @@ inline void fs_base::s_static_write(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     int32_t vr;
 
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(5, 2);
+    METHOD_OVER(5, 2);
 
     ARG(obj_ptr<FileHandle_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
@@ -879,7 +882,7 @@ inline void fs_base::s_static_write(const v8::FunctionCallbackInfo<v8::Value>& a
     else
         hr = ac_write(v0, v1, v2, v3, v4, vr);
 
-    ASYNC_METHOD_OVER(4, 2);
+    METHOD_OVER(4, 2);
 
     ARG(obj_ptr<FileHandle_base>, 0);
     ARG(exlib::string, 1);
@@ -896,9 +899,9 @@ inline void fs_base::s_static_write(const v8::FunctionCallbackInfo<v8::Value>& a
 
 inline void fs_base::s_static_writeTextFile(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(exlib::string, 1);
@@ -913,9 +916,9 @@ inline void fs_base::s_static_writeTextFile(const v8::FunctionCallbackInfo<v8::V
 
 inline void fs_base::s_static_writeFile(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(3, 2);
+    METHOD_OVER(3, 2);
 
     ARG(exlib::string, 0);
     ARG(obj_ptr<Buffer_base>, 1);
@@ -926,7 +929,7 @@ inline void fs_base::s_static_writeFile(const v8::FunctionCallbackInfo<v8::Value
     else
         hr = ac_writeFile(v0, v1, v2);
 
-    ASYNC_METHOD_OVER(3, 3);
+    METHOD_OVER(3, 3);
 
     ARG(exlib::string, 0);
     ARG(obj_ptr<Buffer_base>, 1);
@@ -937,7 +940,7 @@ inline void fs_base::s_static_writeFile(const v8::FunctionCallbackInfo<v8::Value
     else
         hr = ac_writeFile(v0, v1, v2);
 
-    ASYNC_METHOD_OVER(3, 2);
+    METHOD_OVER(3, 2);
 
     ARG(exlib::string, 0);
     ARG(exlib::string, 1);
@@ -948,7 +951,7 @@ inline void fs_base::s_static_writeFile(const v8::FunctionCallbackInfo<v8::Value
     else
         hr = ac_writeFile(v0, v1, v2);
 
-    ASYNC_METHOD_OVER(3, 3);
+    METHOD_OVER(3, 3);
 
     ARG(exlib::string, 0);
     ARG(exlib::string, 1);
@@ -964,9 +967,9 @@ inline void fs_base::s_static_writeFile(const v8::FunctionCallbackInfo<v8::Value
 
 inline void fs_base::s_static_appendFile(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    METHOD_ENTER();
+    ASYNC_METHOD_ENTER();
 
-    ASYNC_METHOD_OVER(2, 2);
+    METHOD_OVER(2, 2);
 
     ARG(exlib::string, 0);
     ARG(obj_ptr<Buffer_base>, 1);

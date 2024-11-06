@@ -40,18 +40,6 @@ static void _InterruptCallback(v8::Isolate* v8_isolate, void* data)
         process_base::exit(1);
 }
 
-static result_t async_signal(const char* name)
-{
-    Isolate* isolate = Isolate::main();
-
-    if (isolate)
-        isolate->RequestInterrupt(_InterruptCallback, (void*)name);
-    else
-        _exit(1);
-
-    return 0;
-}
-
 static void on_signal(int32_t s)
 {
     const char* name = NULL;
@@ -78,7 +66,14 @@ static void on_signal(int32_t s)
 
     if (s_check_callback.CompareAndSwap(0, 1) != 0)
         _exit(1);
-    asyncCall(async_signal, name);
+    async([name]() {
+        Isolate* isolate = Isolate::main();
+
+        if (isolate)
+            isolate->RequestInterrupt(_InterruptCallback, (void*)name);
+        else
+            _exit(1);
+    });
 }
 
 #ifdef _WIN32
@@ -96,7 +91,7 @@ static HANDLE CreateUniqueDumpFile()
     HANDLE hFile;
 
     puts("core dump....");
-    l = GetCurrentDirectory(MAX_PATH, fname);
+    l = GetCurrentDirectoryA(MAX_PATH, fname);
     memcpy(fname + l, "\\core.", 6);
     l += 6;
 
@@ -105,7 +100,7 @@ static HANDLE CreateUniqueDumpFile()
         memcpy(fname + l + (i > 999 ? 4 : (i > 99 ? 3 : (i > 9 ? 2 : 1))),
             ".dmp", 5);
 
-        hFile = CreateFile(fname, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+        hFile = CreateFileA(fname, GENERIC_READ | GENERIC_WRITE, 0, NULL,
             CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile != INVALID_HANDLE_VALUE)
             return hFile;
@@ -170,7 +165,7 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
 void init_signal()
 {
     HMODULE hDll;
-    if (hDll = ::LoadLibrary("DBGHELP.DLL")) {
+    if (hDll = ::LoadLibraryA("DBGHELP.DLL")) {
         s_pDump = (MINIDUMPWRITEDUMP)::GetProcAddress(hDll,
             "MiniDumpWriteDump");
         if (s_pDump)

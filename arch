@@ -1,28 +1,14 @@
 #!/bin/bash
 
-enter()
-{
-    export PS1="\e[1;32m\u\e[0m@\e[1;31mqemu#$1\e[0m:\e[1;34m\w>\e[0m "
-    bash --noprofile --norc
-}
+CUR=$(pwd)
+WORKS_DIR=$(dirname "$CUR")
 
-case $1 in
-    arm) export QEMU_LD_PREFIX="/usr/arm-linux-gnueabihf"
-        enter $1
-        ;;
-    arm64) export QEMU_LD_PREFIX="/usr/aarch64-linux-gnu"
-        enter $1
-        ;;
-    mips64) export QEMU_LD_PREFIX="/usr/mips64el-linux-gnuabi64"
-        enter $1
-        ;;
-    ppc64) export QEMU_LD_PREFIX="/usr/powerpc64le-linux-gnu"
-        enter $1
-        ;;
-    riscv64) export QEMU_LD_PREFIX="/usr/riscv64-linux-gnu"
-        enter $1
-        ;;
-    *) echo "illegal option $1"
-        usage
-        ;;
-esac
+if [ "$2" == "alpine" ]; then
+    IMAGE="fibjs/alpine-build-env:$1"
+elif [[ "$1" =~ (ubuntu[0-9]+|centos[0-9]+) ]]; then
+    IMAGE="fibjs/linux-test-env:$1"
+else
+    IMAGE="fibjs/linux-build-env:$1"
+fi
+
+docker run -ti --rm -v ${WORKS_DIR}:${WORKS_DIR} $IMAGE bash -c "cd ${CUR} && bash"
