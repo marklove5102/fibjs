@@ -104,17 +104,11 @@ int32_t API_resultRowValue(void* result, int32_t icolumn, UMTypeInfo* ti, void* 
             v.parseDate((const char*)value, (int32_t)cbValue);
             break;
 
-        case MFTYPE_TINY_BLOB:
-        case MFTYPE_MEDIUM_BLOB:
-        case MFTYPE_LONG_BLOB:
-        case MFTYPE_BLOB:
-            if (ti->flags & MFFLAG_BINARY_FLAG) {
-                v = new Buffer((const char*)value, cbValue);
-                break;
-            }
-
         default:
-            v = exlib::string((const char*)value, cbValue);
+            if (ti->flags & MFFLAG_BINARY_FLAG)
+                v = new Buffer((const char*)value, cbValue);
+            else
+                v = exlib::string((const char*)value, cbValue);
             break;
         }
     } else {
@@ -168,14 +162,16 @@ result_t db_base::openMySQL(exlib::string connString, obj_ptr<MySQL_base>& retVa
         return hr;
 
     int32_t nPort = 3306;
-    if (u->m_port.length() > 0)
-        nPort = atoi(u->m_port.c_str());
+    exlib::string port = u->port();
+    if (port.length() > 0)
+        nPort = atoi(port.c_str());
 
     obj_ptr<mysql> conn = new mysql();
 
-    hr = conn->connect(u->m_hostname.c_str(), nPort, u->m_username.c_str(),
-        u->m_password.c_str(),
-        u->m_pathname.length() > 0 ? u->m_pathname.c_str() + 1 : "");
+    exlib::string pathname = u->pathname();
+    hr = conn->connect(u->hostname().c_str(), nPort, u->username().c_str(),
+        u->password().c_str(),
+        pathname.length() > 0 ? pathname.c_str() + 1 : "");
     if (hr < 0)
         return hr;
 
