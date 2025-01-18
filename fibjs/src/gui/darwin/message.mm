@@ -5,7 +5,8 @@
  *      Author: lion
  */
 
-#if defined(OS_DESKTOP)
+#include <exlib/include/osconfig.h>
+#ifndef iPhone
 
 #include "object.h"
 #include "ifs/gui.h"
@@ -16,7 +17,7 @@ extern int32_t s_window_count;
 
 namespace fibjs {
 
-NSString* toNSString(const exlib::string& str)
+inline NSString* toNSString(const exlib::string& str)
 {
     return [NSString stringWithUTF8String:str.c_str()];
 }
@@ -28,9 +29,8 @@ result_t gui_base::alert(exlib::string message, AsyncEvent* ac)
 
 result_t gui_base::alert(exlib::string title, exlib::string message, AsyncEvent* ac)
 {
-    result_t hr = check_gui(ac);
-    if (hr < 0)
-        return hr;
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_GUICALL);
 
     NSAlert* alert = [[NSAlert alloc] init];
     [alert setMessageText:toNSString(title)];
@@ -55,9 +55,8 @@ result_t gui_base::confirm(exlib::string message, bool& retVal, AsyncEvent* ac)
 
 result_t gui_base::confirm(exlib::string title, exlib::string message, bool& retVal, AsyncEvent* ac)
 {
-    result_t hr = check_gui(ac);
-    if (hr < 0)
-        return hr;
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_GUICALL);
 
     NSAlert* alert = [[NSAlert alloc] init];
     [alert setMessageText:toNSString(title)];

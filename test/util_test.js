@@ -891,6 +891,47 @@ describe('util', () => {
             assert.equal(util.format('%%%s%%%%', 'hi'), '%hi%%');
         });
 
+        describe("Error", () => {
+            it("Error", () => {
+                var e = new Error('error');
+                assert.equal(util.format(e), e.stack);
+
+                e.a = 100;
+                e.b = "foo";
+
+                var o = {
+                    a: 100,
+                    b: "foo"
+                };
+
+                assert.equal(util.format(e), e.stack + " " + util.format(o));
+            });
+
+            it("Error with object property", () => {
+                var e = new Error('error');
+                e.a = {
+                    b: 100
+                };
+
+                assert.equal(util.format(e), e.stack + " {\n  \"a\": [Object]\n}");
+            });
+
+            it("Error with object property in Object", () => {
+                var e = new Error('error');
+                e.a = {
+                    b: 100
+                };
+
+                assert.equal(util.format({
+                    error: e,
+                    b: {
+                        a: 100
+                    }
+                }), "{\n  \"error\": " + e.stack +
+                " {\n    \"a\": [Object]\n  },\n  \"b\": {\n    \"a\": 100\n  }\n}");
+            });
+        });
+
         it("fix: crash on error.", () => {
             util.format(new mq.Message());
         });
@@ -1662,6 +1703,48 @@ describe('util', () => {
         }
     });
 
+    it("colors", () => {
+        if (util.colors.hasColors) {
+            assert.equal(util.colors.clear, "\u001b[0m");
+            assert.equal(util.colors.normal, "\u001b[0;39m");
+            assert.equal(util.colors.black, "\u001b[0;30m");
+            assert.equal(util.colors.gray, "\u001b[90m");
+            assert.equal(util.colors.red, "\u001b[0;31m");
+            assert.equal(util.colors.green, "\u001b[0;32m");
+            assert.equal(util.colors.yellow, "\u001b[0;33m");
+            assert.equal(util.colors.blue, "\u001b[0;34m");
+            assert.equal(util.colors.magenta, "\u001b[0;35m");
+            assert.equal(util.colors.cyan, "\u001b[0;36m");
+            assert.equal(util.colors.white, "\u001b[0;37m");
+            assert.equal(util.colors.lightred, "\u001b[1;31m");
+            assert.equal(util.colors.lightgreen, "\u001b[1;32m");
+            assert.equal(util.colors.lightyellow, "\u001b[1;33m");
+            assert.equal(util.colors.lightblue, "\u001b[1;34m");
+            assert.equal(util.colors.lightmagenta, "\u001b[1;35m");
+            assert.equal(util.colors.lightcyan, "\u001b[1;36m");
+            assert.equal(util.colors.lightwhite, "\u001b[1;37m");
+        } else {
+            assert.equal(util.colors.clear, "");
+            assert.equal(util.colors.normal, "");
+            assert.equal(util.colors.black, "");
+            assert.equal(util.colors.gray, "");
+            assert.equal(util.colors.red, "");
+            assert.equal(util.colors.green, "");
+            assert.equal(util.colors.yellow, "");
+            assert.equal(util.colors.blue, "");
+            assert.equal(util.colors.magenta, "");
+            assert.equal(util.colors.cyan, "");
+            assert.equal(util.colors.white, "");
+            assert.equal(util.colors.lightred, "");
+            assert.equal(util.colors.lightgreen, "");
+            assert.equal(util.colors.lightyellow, "");
+            assert.equal(util.colors.lightblue, "");
+            assert.equal(util.colors.lightmagenta, "");
+            assert.equal(util.colors.lightcyan, "");
+            assert.equal(util.colors.lightwhite, "");
+        }
+    });
+
     describe("async wrap cache", () => {
         it("multi sync", () => {
             function cb_test(cb) { }
@@ -1900,6 +1983,7 @@ describe('util', () => {
                 "xml",
                 "ws",
                 "vm",
+                "v8",
                 "uuid",
                 "util",
                 "url",
@@ -1911,7 +1995,6 @@ describe('util', () => {
                 "ssl",
                 "querystring",
                 "punycode",
-                "profiler",
                 "process",
                 "path",
                 "os",
@@ -1956,4 +2039,3 @@ describe('util', () => {
     });
 });
 
-require.main === module && test.run(console.DEBUG);

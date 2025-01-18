@@ -42,23 +42,40 @@ const tray = gui.createTray({
                         minWidth: 300,
                         minHeight: 200,
                         maxWidth: 800,
-                        caption: false,
+                        titlebar: "transparent",
                         hideOnClose: true
                     });
                 }
             }
         },
         {
-            label: "alert",
-            onclick: function () {
-                gui.alert("Hello World", "Hello World, this a message.");
-            }
-        },
-        {
-            label: "confirm",
-            onclick: function () {
-                console.log(gui.confirm("Confirm", "Do you want to exit?"));
-            }
+            label: "message box",
+            submenu: [
+                {
+                    label: "alert",
+                    onclick: function () {
+                        gui.alert("Hello World", "Hello World, this a message.");
+                    }
+                },
+                {
+                    label: "confirm",
+                    onclick: function () {
+                        console.log(gui.confirm("Confirm", "Do you want to exit?"));
+                    }
+                },
+                {
+                    label: "input",
+                    onclick: function () {
+                        console.log(gui.input("Input", "Enter your name:"));
+                    }
+                },
+                {
+                    label: "input password",
+                    onclick: function () {
+                        console.log(gui.input("Input Password", "Enter your password:", true));
+                    }
+                },
+            ]
         },
         {
             label: "open dialog",

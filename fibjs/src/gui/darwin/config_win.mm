@@ -5,7 +5,8 @@
  *      Author: lion
  */
 
-#if defined(OS_DESKTOP)
+#include <exlib/include/osconfig.h>
+#ifndef iPhone
 
 #import <Cocoa/Cocoa.h>
 #import <objc/runtime.h>
@@ -197,7 +198,7 @@ static fibjs::WebView* getWebViewFromNSWindow(NSWindow* win)
 namespace fibjs {
 
 static dispatch_queue_t mainQueue = dispatch_get_main_queue();
-void putGuiPool(AsyncEvent* ac)
+void os_putGuiPool(AsyncEvent* ac)
 {
     dispatch_async(mainQueue, ^{ ac->invoke(); });
 }
@@ -249,8 +250,23 @@ void WebView::config()
         mask = NSWindowStyleMaskResizable;
     else {
         if (m_options->frame.value()) {
-            if (m_options->caption.value())
+            obj_ptr<TitlebarOptions> titlebar_opt = std::get<obj_ptr<TitlebarOptions>>(m_options->titlebar.value());
+            exlib::string& titlebar_style = titlebar_opt->style.value();
+
+            if (titlebar_style != "hide")
                 mask |= NSWindowStyleMaskTitled;
+
+            if (titlebar_style == "transparent") {
+                mask |= NSFullSizeContentViewWindowMask;
+                window.titlebarAppearsTransparent = true;
+            }
+
+            if (titlebar_opt->height.value() == "tall") {
+                NSToolbar* toolbar = [[NSToolbar alloc] initWithIdentifier:@"MainToolbar"];
+                toolbar.showsBaselineSeparator = NO;
+                window.toolbar = toolbar;
+                [window setToolbarStyle:NSWindowToolbarStyleUnified];
+            }
 
             if (m_options->resizable.value())
                 mask |= NSWindowStyleMaskResizable;
@@ -278,6 +294,18 @@ void WebView::config()
 
     if (nHeight == CW_USEDEFAULT)
         nHeight = screen_rect.size.height * 3 / 4;
+
+    if (m_options->minWidth.has_value())
+        nWidth = std::max(nWidth, m_options->minWidth.value());
+
+    if (m_options->minHeight.has_value())
+        nHeight = std::max(nHeight, m_options->minHeight.value());
+
+    if (m_options->maxWidth.has_value())
+        nWidth = std::min(nWidth, m_options->maxWidth.value());
+
+    if (m_options->maxHeight.has_value())
+        nHeight = std::min(nHeight, m_options->maxHeight.value());
 
     if (x == CW_USEDEFAULT)
         x = (screen_rect.size.width - nWidth) / 2;

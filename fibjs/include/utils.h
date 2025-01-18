@@ -83,6 +83,7 @@ typedef int32_t SOCKET;
 
 #include <cmath>
 #include <vector>
+#include <variant>
 
 #ifdef _WIN32
 
@@ -891,9 +892,6 @@ result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<T>& 
     if (vr)
         return 0;
 
-    if (bStrict)
-        return CALL_E_TYPEMISMATCH;
-
     return T::load(isolate, v, vr);
 }
 
@@ -955,6 +953,8 @@ GET_JSVALUE(TypedArray);
 GET_JSVALUE(ArrayBuffer);
 GET_JSVALUE(ArrayBufferView);
 GET_JSVALUE(Function);
+GET_JSVALUE(Promise);
+GET_JSVALUE(RegExp);
 
 inline result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, v8::Local<v8::Value>& vr, bool bStrict = false)
 {
@@ -989,6 +989,29 @@ inline result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, std::
     vr = r;
 
     return 0;
+}
+
+template <typename T1, typename T2>
+result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, std::variant<T1, T2>& n, bool bStrict = false)
+{
+    if (v.IsEmpty())
+        return CALL_E_TYPEMISMATCH;
+
+    T1 n1;
+    result_t hr = GetArgumentValue(isolate, v, n1, bStrict);
+    if (hr >= 0) {
+        n = n1;
+        return 0;
+    }
+
+    T2 n2;
+    hr = GetArgumentValue(isolate, v, n2, bStrict);
+    if (hr >= 0) {
+        n = n2;
+        return 0;
+    }
+
+    return hr;
 }
 
 result_t setRuntimeError(result_t code, const char* err = nullptr);
@@ -1199,29 +1222,6 @@ inline v8::Local<v8::Value> ThrowEvalError(const char* msg)
 inline v8::Local<v8::Value> ThrowEvalError(exlib::string msg)
 {
     return ThrowEvalError(msg.c_str());
-}
-
-/**
- *  v8::Local<v8::Object> e = v8::Object::New(isolate->m_isolate);
- *  e->Set(isolate->NewString("actual"), isolate->NewString("actual msg"));
- *  e->Set(isolate->NewString("expected"), isolate->NewString("expected msg"));
- *  e->Set(isolate->NewString("message"), isolate->NewString("message msg"));
- *  e->Set(isolate->NewString("operator"), isolate->NewString("operator msg"));
- *  ThrowAssertionError(e);
- **/
-inline v8::Local<v8::Value> ThrowAssertionError(v8::Local<v8::Object>& msg)
-{
-    Isolate* isolate = Isolate::current();
-    auto _context = isolate->context();
-    v8::Local<v8::Value> args[] = { msg };
-    JSValue error;
-
-    {
-        v8::Local<v8::Object> AssertionError = isolate->m_AssertionError.Get(isolate->m_isolate);
-        error = AssertionError->CallAsConstructor(_context, 1, args);
-    }
-
-    return ThrowError(error);
 }
 
 inline result_t LastError()

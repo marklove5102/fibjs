@@ -27,7 +27,10 @@ module gui
          "maxWidth": 0, // specify the maximum width of the window, default is no limit
          "maxHeight": 0, // specify the maximum height of the window, default is no limit
          "frame": true, // specify whether the window has frame, default is true
-         "caption": true, // specify whether the window has caption, default is true
+         "titlebar": "show" | {  // specify the titlebar style: "show" (default), "hide", "transparent"
+            "style": "show", // specify the titlebar style: "show" (default), "hide", "transparent"
+            "height": "nprmal" // specify the titlebar height: "normal" (default), "tall", not work in macos
+         },
          "resizable": true, // specify whether the window is resizable, default is true
          "menu": menu, // specify the menu of the window, can be a Menu object or a menu item array, default is null
          "maximize": false, // specify whether the window is maximized, default is false
@@ -62,7 +65,10 @@ module gui
          "maxWidth": 0, // specify the maximum width of the window, default is no limit
          "maxHeight": 0, // specify the maximum height of the window, default is no limit
          "frame": true, // specify whether the window has frame, default is true
-         "caption": true, // specify whether the window has caption, default is true
+         "titlebar": "show" | {  // specify the titlebar style: "show" (default), "hide", "transparent"
+            "style": "show", // specify the titlebar style: "show" (default), "hide", "transparent"
+            "height": "nprmal" // specify the titlebar height: "normal" (default), "tall", not work in macos
+         },
          "resizable": true, // specify whether the window is resizable, default is true
          "menu": menu, // specify the menu of the window, can be a Menu object or a menu item array, default is null
          "maximize": false, // specify whether the window is maximized, default is false
@@ -94,7 +100,10 @@ module gui
          "maxWidth": 0, // specify the maximum width of the window, default is no limit
          "maxHeight": 0, // specify the maximum height of the window, default is no limit
          "frame": true, // specify whether the window has frame, default is true
-         "caption": true, // specify whether the window has caption, default is true
+         "titlebar": "show" | {  // specify the titlebar style: "show" (default), "hide", "transparent"
+            "style": "show", // specify the titlebar style: "show" (default), "hide", "transparent"
+            "height": "nprmal" // specify the titlebar height: "normal" (default), "tall", not work in macos
+         },
          "resizable": true, // specify whether the window is resizable, default is true
          "menu": menu, // specify the menu of the window, can be a Menu object or a menu item array, default is null
          "maximize": false, // specify whether the window is maximized, default is false
@@ -183,6 +192,21 @@ module gui
      @return 返回用户的选择结果
     */
     static Boolean confirm(String title, String message) async;
+
+    /*! @brief 弹出一个输入框
+     @param message 消息内容
+     @param password 是否为密码输入，默认为 false
+     @return 返回用户输入的内容
+    */
+    static String input(String message, Boolean password = false) async;
+
+    /*! @brief 弹出一个输入框
+     @param title 消息标题
+     @param message 消息内容
+     @param password 是否为密码输入，默认为 false
+     @return 返回用户输入的内容
+    */
+    static String input(String title, String message, Boolean password = false) async;
 
     /*! @brief 弹出一个选择文件对话框
 

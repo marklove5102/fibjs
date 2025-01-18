@@ -44,8 +44,10 @@
 /// <reference path="../module/assert.d.ts" />
 /// <reference path="../module/performance.d.ts" />
 /// <reference path="../module/perf_hooks.d.ts" />
-/// <reference path="../module/profiler.d.ts" />
+/// <reference path="../module/v8.d.ts" />
 /// <reference path="../module/test.d.ts" />
+/// <reference path="../module/test_suite.d.ts" />
+/// <reference path="../module/colors.d.ts" />
 /// <reference path="../module/db.d.ts" />
 /// <reference path="../module/registry.d.ts" />
 /// <reference path="../module/types.d.ts" />
@@ -56,6 +58,7 @@
 /// <reference path="../module/fs_constants.d.ts" />
 /// <reference path="../module/crypto_constants.d.ts" />
 /// <reference path="../module/zlib_constants.d.ts" />
+/// <reference path="../module/assert_strict.d.ts" />
 declare module '@fibjs/types/bridge' {
 }
 

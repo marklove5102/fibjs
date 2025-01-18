@@ -42,6 +42,7 @@ public:
     int32_t pos;
     int32_t len;
     int32_t mode;
+    bool is_error = false;
 };
 
 void string_format(Isolate* isolate, StringBuffer& strBuffer, v8::Local<v8::Value> v, bool color, int32_t maxStringLength)
@@ -109,15 +110,16 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
     QuickArray<_item> stk;
     QuickArray<v8::Local<v8::Object>> vals;
     v8::Local<v8::Value> v = obj;
+    bool in_error = false;
     int32_t padding = 0;
     const int32_t tab_size = 2;
     _item* it = NULL;
 
     while (true) {
         if (v.IsEmpty())
-            strBuffer.append(color_string(COLOR_TITLE, "undefined", color));
+            strBuffer.append(color_string(COLOR_BOLD, "undefined", color));
         else if (v->IsUndefined() || v->IsNull())
-            strBuffer.append(color_string(COLOR_TITLE, isolate->toString(v), color));
+            strBuffer.append(color_string(COLOR_BOLD, isolate->toString(v), color));
         else if (v->IsDate())
             strBuffer.append(color_string(COLOR_MAGENTA, isolate->toString(v), color));
         else if (v->IsBoolean() || v->IsBooleanObject())
@@ -148,14 +150,18 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
             strBuffer.append(color_string(COLOR_RED, s, color));
         } else if (v->IsPromise()) {
             strBuffer.append(color_string(COLOR_CYAN, "[Promise]", color));
-        } else if (v->IsNativeError()) {
-            v8::Local<v8::Object> obj = v.As<v8::Object>();
-            exlib::string s(isolate->toString(JSValue(obj->Get(_context, isolate->NewString("stack")))));
-            strBuffer.append(color_string(COLOR_LIGHTRED, s, color));
         } else if (v->IsSymbol()) {
             symbol_format(isolate, strBuffer, v, color);
         } else if (v->IsObject()) {
             bool isFunction = false;
+            bool isError = false;
+
+            if (v->IsNativeError()) {
+                v8::Local<v8::Object> obj = v.As<v8::Object>();
+                exlib::string s(isolate->toString(JSValue(obj->Get(_context, isolate->NewString("stack")))));
+                strBuffer.append(color_string(COLOR_LIGHTRED, s, color));
+                isError = true;
+            }
 
             if (v->IsFunction()) {
                 exlib::string s(v->IsAsyncFunction() ? "[AsyncFunction" : "[Function");
@@ -231,7 +237,7 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
                     } else
                         keys = vs;
                 } else {
-                    if (!isFunction && !v->IsArray()) {
+                    if (!isFunction && !isError && !v->IsArray()) {
                         v8::Local<v8::Value> prototype = obj->GetPrototype();
                         if (prototype->IsObject()) {
                             v8::Local<v8::Object> protoObj = prototype->ToObject(_context).ToLocalChecked();
@@ -258,7 +264,7 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
                 }
 
                 if (keys.IsEmpty()) {
-                    if (!isFunction)
+                    if (!isFunction && !isError)
                         strBuffer.append("{}");
                     break;
                 }
@@ -304,7 +310,7 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
                     if (len == 0)
                         strBuffer.append("[]");
                     else {
-                        if (sz >= (depth + 1)) {
+                        if (in_error || sz >= (depth + 1)) {
                             strBuffer.append(color_string(COLOR_CYAN, "[Array]", color));
                             break;
                         }
@@ -330,7 +336,7 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
                     if (len == 0)
                         strBuffer.append("[]");
                     else {
-                        if (sz >= (depth + 1)) {
+                        if (in_error || sz >= (depth + 1)) {
                             strBuffer.append(color_string(COLOR_CYAN, "[TypedArray]", color));
                             break;
                         }
@@ -357,13 +363,13 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
                 int32_t len = keys->Length();
 
                 if (len == 0) {
-                    if (!isFunction)
+                    if (!isFunction && !isError)
                         strBuffer.append("{}");
                 } else {
-                    if (isFunction)
+                    if (isFunction || isError)
                         strBuffer.append(' ');
 
-                    if (sz >= (depth + 1)) {
+                    if (in_error || sz >= (depth + 1)) {
                         strBuffer.append(color_string(COLOR_CYAN, "[Object]", color));
                         break;
                     }
@@ -384,6 +390,7 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
                     it->obj = obj;
                     it->keys = keys;
                     it->len = len;
+                    it->is_error = isError;
 
                     strBuffer.append('{');
                     padding += tab_size;
@@ -431,6 +438,7 @@ exlib::string json_format(Isolate* isolate, v8::Local<v8::Value> obj, bool color
             newline(strBuffer, padding);
 
             v = JSValue(it->keys->Get(_context, it->pos++));
+            in_error = it->is_error;
 
             if (!it->obj.IsEmpty()) {
                 TryCatch try_catch;

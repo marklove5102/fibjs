@@ -20,7 +20,10 @@ public:
         , m_bNoBody(false)
         , m_maxHeadersCount(128)
         , m_maxHeaderSize(8192)
+        , m_maxChunkSize(2)
         , m_maxBodySize(64)
+        , m_contentLength(-1)
+        , m_bChunked(false)
     {
         m_headers = new HttpCollection();
         clear();
@@ -46,6 +49,8 @@ public:
     result_t set_maxHeadersCount(int32_t newVal);
     result_t get_maxHeaderSize(int32_t& retVal);
     result_t set_maxHeaderSize(int32_t newVal);
+    result_t get_maxChunkSize(int32_t& retVal);
+    result_t set_maxChunkSize(int32_t newVal);
     result_t get_maxBodySize(int32_t& retVal);
     result_t set_maxBodySize(int32_t newVal);
     result_t get_socket(obj_ptr<Stream_base>& retVal);
@@ -69,6 +74,8 @@ public:
     result_t sendHeader(Stream_base* stm, exlib::string& strCommand,
         AsyncEvent* ac);
     result_t readFrom(Stream_base* stm, AsyncEvent* ac);
+    result_t readHeader(Stream_base* stm, AsyncEvent* ac);
+    result_t readBody(AsyncEvent* ac);
 
 public:
     void addHeader(const char* name, int32_t szName, const char* value,
@@ -92,10 +99,14 @@ public:
     bool m_upgrade;
     int32_t m_maxHeadersCount;
     int32_t m_maxHeaderSize;
+    int32_t m_maxChunkSize;
     int32_t m_maxBodySize;
     exlib::string m_origin;
     exlib::string m_encoding;
     obj_ptr<HttpCollection> m_headers;
+
+    int64_t m_contentLength;
+    bool m_bChunked;
 };
 
 } /* namespace fibjs */

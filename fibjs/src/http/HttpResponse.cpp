@@ -125,6 +125,16 @@ result_t HttpResponse::set_maxHeaderSize(int32_t newVal)
     return m_message->set_maxHeaderSize(newVal);
 }
 
+result_t HttpResponse::get_maxChunkSize(int32_t& retVal)
+{
+    return m_message->get_maxChunkSize(retVal);
+}
+
+result_t HttpResponse::set_maxChunkSize(int32_t newVal)
+{
+    return m_message->set_maxChunkSize(newVal);
+}
+
 result_t HttpResponse::get_maxBodySize(int32_t& retVal)
 {
     return m_message->get_maxBodySize(retVal);
@@ -315,11 +325,8 @@ result_t http_base::get_STATUS_CODES(v8::Local<v8::Object>& retVal)
     return 0;
 }
 
-result_t HttpResponse::sendTo(Stream_base* stm, AsyncEvent* ac)
+exlib::string HttpResponse::prepareHeaders()
 {
-    if (ac->isSync())
-        return CHECK_ERROR(CALL_E_NOSYNC);
-
     if (m_cookies) {
         int32_t len, i;
 
@@ -372,18 +379,28 @@ result_t HttpResponse::sendTo(Stream_base* stm, AsyncEvent* ac)
     get_protocol(strCommand);
     strCommand.append(statusMessage);
 
+    return strCommand;
+}
+
+result_t HttpResponse::sendTo(Stream_base* stm, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    exlib::string strCommand = prepareHeaders();
     return m_message->send(stm, strCommand, ac);
 }
 
-result_t HttpResponse::readFrom(Stream_base* stm, AsyncEvent* ac)
+result_t HttpResponse::readFrom(Stream_base* stm, AsyncEvent* ac, bool headerOnly)
 {
     class asyncReadFrom : public AsyncState {
     public:
         asyncReadFrom(HttpResponse* pThis, BufferedStream_base* stm,
-            AsyncEvent* ac)
+            AsyncEvent* ac, bool headerOnly)
             : AsyncState(ac)
             , m_pThis(pThis)
             , m_stm(stm)
+            , m_headerOnly(headerOnly)
         {
             next(begin);
         }
@@ -415,12 +432,16 @@ result_t HttpResponse::readFrom(Stream_base* stm, AsyncEvent* ac)
             if (hr < 0)
                 return hr;
 
+            if (m_headerOnly)
+                return m_pThis->m_message->readHeader(m_stm, next());
+
             return m_pThis->m_message->readFrom(m_stm, next());
         }
 
     public:
         obj_ptr<HttpResponse> m_pThis;
         obj_ptr<BufferedStream_base> m_stm;
+        bool m_headerOnly;
         exlib::string m_strLine;
     };
 
@@ -431,7 +452,22 @@ result_t HttpResponse::readFrom(Stream_base* stm, AsyncEvent* ac)
     if (!_stm)
         return CHECK_ERROR(Runtime::setError("HttpResponse: only accept BufferedStream object."));
 
-    return (new asyncReadFrom(this, _stm, ac))->post(0);
+    return (new asyncReadFrom(this, _stm, ac, headerOnly))->post(0);
+}
+
+result_t HttpResponse::readFrom(Stream_base* stm, AsyncEvent* ac)
+{
+    return readFrom(stm, ac, false);
+}
+
+result_t HttpResponse::readHeader(Stream_base* stm, AsyncEvent* ac)
+{
+    return readFrom(stm, ac, true);
+}
+
+result_t HttpResponse::readBody(AsyncEvent* ac)
+{
+    return m_message->readBody(ac);
 }
 
 result_t HttpResponse::get_stream(obj_ptr<Stream_base>& retVal)
@@ -559,34 +595,7 @@ result_t HttpResponse::sendHeader(Stream_base* stm, AsyncEvent* ac)
     if (ac->isSync())
         return CHECK_ERROR(CALL_E_NOSYNC);
 
-    if (m_cookies) {
-        int32_t len, i;
-
-        len = m_cookies->length();
-
-        for (i = 0; i < len; i++) {
-            Variant v;
-            obj_ptr<object_base> cookie;
-            exlib::string str;
-
-            m_cookies->_indexed_getter(i, v);
-            cookie = v.object();
-
-            if (cookie) {
-                cookie->toString(str);
-                addHeader("Set-Cookie", str);
-            }
-        }
-
-        m_cookies.Release();
-    }
-
-    int32_t pos = shortcut[m_statusCode / 100 - 1] + m_statusCode % 100;
-    exlib::string strCommand;
-
-    get_protocol(strCommand);
-    strCommand.append(status_lines[pos], status_lines_size[pos]);
-
+    exlib::string strCommand = prepareHeaders();
     return m_message->sendHeader(stm, strCommand, ac);
 }
 

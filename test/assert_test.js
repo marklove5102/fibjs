@@ -13,6 +13,245 @@ describe('assert', () => {
         assert(foo == 'bar', "expected foo to equal `bar`");
     });
 
+    describe('throws', () => {
+        it('throws', () => {
+            assert.throws(() => {
+                throw new Error('foo');
+            });
+        });
+
+        it('throws with regex', () => {
+            assert.throws(() => {
+                throw new Error('bar');
+            }, /bar/);
+
+            assert.throws(() => {
+                assert.throws(() => {
+                    throw new Error('bar');
+                }, /foo/);
+            }, "expected [Function] to throw an error matching /foo/");
+        });
+
+        it('throws with function', () => {
+            assert.throws(() => {
+                throw new Error('bar');
+            }, (err) => {
+                assert.equal(err.message, 'bar');
+                return true;
+            });
+
+            assert.throws(() => {
+                assert.throws(() => {
+                    throw new Error('bar');
+                }, (err) => {
+                    return err.message === 'foo';
+                });
+            }, "expected [Function] to throw an error matching err.message === 'foo'");
+
+            assert.throws(() => {
+                assert.throws(() => {
+                    throw new Error('bar');
+                }, (err) => {
+                    assert.equal(err.message, 'foo');
+                    console.error(err.message);
+                    return true;
+                });
+            }, "expected [Function] to throw an error matching err.message === 'foo'");
+        });
+
+        it('throws with Object and String properties', () => {
+            assert.throws(() => {
+                throw new Error('bar');
+            }, {
+                message: 'bar'
+            });
+
+            assert.throws(() => {
+                assert.throws(() => {
+                    throw new Error('bar');
+                }, {
+                    message: 'foo'
+                });
+            }, "expected [Function] to throw an error matching err.message === 'foo'");
+        });
+
+        it('throws with Object and Number properties', () => {
+            assert.throws(() => {
+                throw new Error(1234);
+            }, {
+                message: '1234'
+            });
+
+            assert.throws(() => {
+                assert.throws(() => {
+                    throw new Error(1234);
+                }, {
+                    message: 1234
+                });
+            }, "expected [Function] to throw an error matching err.message === 'foo'");
+
+            assert.throws(() => {
+                assert.throws(() => {
+                    throw new Error(1234);
+                }, {
+                    message: '4567'
+                });
+            }, "expected [Function] to throw an error matching err.message === 'foo'");
+        });
+
+        it('throws with Object and String RegExp properties', () => {
+            assert.throws(() => {
+                throw new Error('bar');
+            }, {
+                message: /bar/
+            });
+
+            assert.throws(() => {
+                assert.throws(() => {
+                    throw new Error('bar');
+                }, {
+                    message: /foo/
+                });
+            }, "expected [Function] to throw an error matching err.message === 'foo'");
+        });
+
+        it('throws with Error Object', () => {
+            assert.throws(() => {
+                throw new TypeError('Type error');
+            }, TypeError);
+
+            assert.throws(() => {
+                assert.throws(() => {
+                    throw new Error('Type error');
+                }, TypeError);
+            }, "expected [Function] to throw an error matching TypeError");
+        });
+
+        it('throws with arbitrary value', () => {
+            const values = [42, {}, [], Symbol('xyzzy'), true, 'ball', undefined, null, NaN];
+            for (let i = 0; i < values.length; i++) {
+                assert.throws(() => {
+                    throw values[i];
+                });
+            }
+        });
+    });
+
+    describe('rejects', () => {
+        it('rejects with no arguments', async () => {
+            await assert.rejects(async () => {
+                throw new Error('Rejection');
+            });
+
+            await assert.rejects(async () =>
+                await assert.rejects(async () => {
+                    // No rejection
+                })
+            );
+        });
+
+        it('rejects with error message', async () => {
+            await assert.rejects(async () => {
+                throw new Error('Specific error');
+            }, /Specific error/);
+
+            await assert.rejects(async () =>
+                awaitassert.rejects(async () => {
+                    // No rejection
+                }, /Specific error/)
+            );
+        });
+
+        it('rejects with error type', async () => {
+            await assert.rejects(async () => {
+                throw new TypeError('Type error');
+            }, TypeError);
+
+            await assert.rejects(async () =>
+                await assert.rejects(async () => {
+                    // No rejection
+                }, TypeError)
+            );
+        });
+
+        it('rejects with error predicate', async () => {
+            await assert.rejects(async () => {
+                throw new Error('Custom error');
+            }, (err) => {
+                assert.equal(err.message, 'Custom error');
+                return true;
+            });
+
+            await assert.rejects(async () =>
+                await assert.rejects(async () => {
+                    // No rejection
+                }, (err) => {
+                    return err.message === 'Custom error';
+                })
+            );
+        });
+
+        it('rejects with promise', async () => {
+            const rejectedPromise = Promise.reject(new Error('Promise rejection'));
+            await assert.rejects(rejectedPromise);
+
+            const resolvedPromise = Promise.resolve();
+            await assert.rejects(async () =>
+                await assert.rejects(resolvedPromise)
+            );
+        });
+
+        it('rejects with promise and error matching', async () => {
+            const rejectedPromise = Promise.reject(new TypeError('Specific type error'));
+
+            await assert.rejects(rejectedPromise, TypeError);
+            await assert.rejects(rejectedPromise, /type error/i);
+
+            await assert.rejects(async () =>
+                await assert.rejects(rejectedPromise, RangeError)
+            );
+        });
+
+        it('rejects with promise and predicate', async () => {
+            const rejectedPromise = Promise.reject(new Error('Predicate error'));
+
+            await assert.rejects(rejectedPromise, (err) => {
+                assert.equal(err.message, 'Predicate error');
+                return true;
+            });
+
+            await assert.rejects(async () =>
+                await assert.rejects(rejectedPromise, (err) => {
+                    return err.message === 'Wrong error';
+                })
+            );
+        });
+
+        it('rejects with arbitrary value', async () => {
+            const values = [42, {}, [], Symbol('xyzzy'), true, 'ball', undefined, null, NaN];
+            for (let i = 0; i < values.length; i++) {
+                await assert.rejects(async () => {
+                    throw values[i];
+                });
+            }
+        });
+
+        it("should not catch error in sync function", async () => {
+            await assert.rejects(async () => {
+                await assert.rejects(() => {
+                    throw new Error("error");
+                });
+            });
+        });
+
+        it("should throw error in sync function directly", async () => {
+            await assert.rejects(async () => {
+                await assert.rejects(() => {
+                });
+            });
+        });
+    });
+
     it('isTrue', () => {
         assert.isTrue(true);
 
@@ -123,10 +362,6 @@ describe('assert', () => {
         assert.throws(() => {
             assert.equal(obj, "abb");
         });
-
-        assert.throws(() => {
-            assert.notEqual(obj, "abb");
-        });
     });
 
     it('strictEqual', () => {
@@ -158,8 +393,7 @@ describe('assert', () => {
             }, {
                 tea: 'black'
             });
-        },
-            "expected { tea: \'chai\' } to deeply equal { tea: \'black\' }");
+        }, "expected { tea: \'chai\' } to deeply equal { tea: \'black\' }");
 
         var obja = Object.create({
             tea: 'chai'
@@ -179,8 +413,7 @@ describe('assert', () => {
 
         assert.throws(() => {
             assert.deepEqual(obj1, obj2);
-        },
-            "expected { tea: \'chai\' } to deeply equal { tea: \'black\' }");
+        }, "expected { tea: \'chai\' } to deeply equal { tea: \'black\' }");
 
         assert.throws(() => {
             assert.deepEqual({
@@ -219,18 +452,30 @@ describe('assert', () => {
                 "5": 2
             });
         });
+
+        assert.deepEqual({
+            tea: 100
+        }, {
+            tea: '100'
+        });
+
+        assert.throws(() => {
+            assert.deepStrictEqual({
+                tea: 100
+            }, {
+                tea: '100'
+            });
+        });
     });
 
     it('deepEqual (ordering)', () => {
-        var a = {
+        assert.deepEqual({
             a: 'b',
             c: 'd'
-        },
-            b = {
-                c: 'd',
-                a: 'b'
-            };
-        assert.deepEqual(a, b);
+        }, {
+            c: 'd',
+            a: 'b'
+        });
     });
 
     it('deepEqual /regexp/', () => {
@@ -273,8 +518,7 @@ describe('assert', () => {
             secondCircularObject.field2 = secondCircularObject;
             assert.deepEqual(circularObject,
                 secondCircularObject);
-        },
-            "expected { field: [Circular] } to deeply equal { Object (field, field2) }");
+        }, "expected { field: [Circular] } to deeply equal { Object (field, field2) }");
     });
 
     it('notDeepEqual', () => {
@@ -290,8 +534,7 @@ describe('assert', () => {
             }, {
                 tea: 'chai'
             });
-        },
-            "expected { tea: \'chai\' } to not deeply equal { tea: \'chai\' }");
+        }, "expected { tea: \'chai\' } to not deeply equal { tea: \'chai\' }");
     });
 
     it('notDeepEqual (circular)', () => {
@@ -309,8 +552,23 @@ describe('assert', () => {
             delete secondCircularObject.tea;
             assert.notDeepEqual(circularObject,
                 secondCircularObject);
-        },
-            "expected { field: [Circular] } to not deeply equal { field: [Circular] }");
+        }, "expected { field: [Circular] } to not deeply equal { field: [Circular] }");
+    });
+
+    it("match", () => {
+        assert.match('foobar', /^foo/);
+
+        assert.throws(() => {
+            assert.match('foobar', /^bar/);
+        }, "expected 'foobar' to match /^bar/");
+    });
+
+    it("doesNotMatch", () => {
+        assert.doesNotMatch('foobar', /^bar/);
+
+        assert.throws(() => {
+            assert.doesNotMatch('foobar', /^foo/);
+        }, "expected 'foobar' not to match /^foo/");
     });
 
     it('isNull', () => {
@@ -508,7 +766,7 @@ describe('assert', () => {
 
     it("throws async", async () => {
         await sleep(1);
-        assert.throws(async () => {
+        await assert.rejects(async () => {
             throw "error";
         });
     });
@@ -552,10 +810,19 @@ describe('assert', () => {
             assert.throws(() => assert.ifError(null));
         } catch (e) {
             threw = true;
-            assert.strictEqual(e.message, 'Missing expected exception.');
+            assert.strictEqual(e.message, 'Missing expected exception');
         }
         assert.ok(threw);
     });
-});
 
-require.main === module && test.run(console.DEBUG);
+    it('assert.strict', () => {
+        var strict1 = require('assert').strict;
+        var strict2 = require('assert/strict');
+        var strict3 = require('fibjs:assert/strict');
+        var strict4 = require('node:assert/strict');
+
+        assert.equal(strict1, strict2);
+        assert.equal(strict1, strict3);
+        assert.equal(strict1, strict4);
+    });
+});

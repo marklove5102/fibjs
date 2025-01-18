@@ -28,7 +28,10 @@ public:
     static result_t listen(int32_t local_port, v8::Local<v8::Function> cb);
     static result_t stopListen(exlib::string bind_address, int32_t local_port);
     static result_t stopListen(int32_t local_port);
+    static result_t startServer(v8::Local<v8::Object> config);
     static result_t setSctpSettings(v8::Local<v8::Object> settings);
+    static result_t get_loglevel(exlib::string& retVal);
+    static result_t set_loglevel(exlib::string newVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -45,7 +48,10 @@ public:
 public:
     static void s_static_listen(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_stopListen(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_startServer(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_setSctpSettings(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_get_loglevel(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_set_loglevel(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 }
 
@@ -59,6 +65,7 @@ inline ClassInfo& rtc_base::class_info()
     static ClassData::ClassMethod s_method[] = {
         { "listen", s_static_listen, true, ClassData::ASYNC_SYNC },
         { "stopListen", s_static_stopListen, true, ClassData::ASYNC_SYNC },
+        { "startServer", s_static_startServer, true, ClassData::ASYNC_SYNC },
         { "setSctpSettings", s_static_setSctpSettings, true, ClassData::ASYNC_SYNC }
     };
 
@@ -68,9 +75,13 @@ inline ClassInfo& rtc_base::class_info()
         { "RTCIceCandidate", RTCIceCandidate_base::class_info }
     };
 
+    static ClassData::ClassProperty s_property[] = {
+        { "loglevel", s_static_get_loglevel, s_static_set_loglevel, true }
+    };
+
     static ClassData s_cd = {
         "rtc", true, s__new, NULL,
-        ARRAYSIZE(s_method), s_method, ARRAYSIZE(s_object), s_object, 0, NULL, 0, NULL, NULL, NULL,
+        ARRAYSIZE(s_method), s_method, ARRAYSIZE(s_object), s_object, ARRAYSIZE(s_property), s_property, 0, NULL, NULL, NULL,
         &object_base::class_info(),
         false
     };
@@ -121,6 +132,19 @@ inline void rtc_base::s_static_stopListen(const v8::FunctionCallbackInfo<v8::Val
     METHOD_VOID();
 }
 
+inline void rtc_base::s_static_startServer(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(v8::Local<v8::Object>, 0);
+
+    hr = startServer(v0);
+
+    METHOD_VOID();
+}
+
 inline void rtc_base::s_static_setSctpSettings(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     METHOD_ENTER();
@@ -130,6 +154,32 @@ inline void rtc_base::s_static_setSctpSettings(const v8::FunctionCallbackInfo<v8
     ARG(v8::Local<v8::Object>, 0);
 
     hr = setSctpSettings(v0);
+
+    METHOD_VOID();
+}
+
+inline void rtc_base::s_static_get_loglevel(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    exlib::string vr;
+
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = get_loglevel(vr);
+
+    METHOD_RETURN();
+}
+
+inline void rtc_base::s_static_set_loglevel(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(exlib::string, 0);
+
+    hr = set_loglevel(v0);
 
     METHOD_VOID();
 }

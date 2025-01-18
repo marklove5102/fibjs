@@ -16,17 +16,20 @@
  */
 module assert
 {
+    /*! @brief 断言错误对象 */
+    static readonly Function AssertionError;
+
     /*! @brief 测试数值为真，为假则断言失败
      @param actual 要测试的数值
      @param msg 断言失败时的提示信息
      */
     static Function(Value actual = undefined, String msg = "");
 
-    /*! @brief 测试数值为真，为假则断言失败
-     @param actual 要测试的数值
-     @param msg 断言失败时的提示信息
-     */
-    static ok(Value actual, String msg = "");
+    /*! 测试数值为真，为假则断言失败，是 assert 模块的别名 */
+    static assert new ok();
+
+    /*! 严格测试模块，参见 assert_strict 模块 */
+    static assert_strict new strict();
 
     /*! @brief 测试数值为假，为真则断言失败
      @param actual 要测试的数值
@@ -75,6 +78,34 @@ module assert
      @param msg 断言失败时的提示信息
      */
     static notDeepEqual(Value actual, Value expected, String msg = "");
+
+    /*! @brief 测试数值严格深度等于预期值，不相等则断言失败
+     @param actual 要测试的数值
+     @param expected 预期的数值
+     @param msg 断言失败时的提示信息
+     */
+    static deepStrictEqual(Value actual, Value expected, String msg = "");
+
+    /*! @brief 测试数值不严格深度等于预期值，相等则断言失败
+     @param actual 要测试的数值
+     @param expected 预期的数值
+     @param msg 断言失败时的提示信息
+     */
+    static notDeepStrictEqual(Value actual, Value expected, String msg = "");
+
+    /*! @brief 测试字符串包含预期字符串，否则断言失败
+     @param actual 要测试的字符串
+     @param expected 预期的正则表达式
+     @param msg 断言失败时的提示信息
+     */
+    static match(String actual, RegExp expected, String msg = "");
+
+    /*! @brief 测试字符串不包含预期字符串，否则断言失败
+     @param actual 要测试的字符串
+     @param expected 预期的正则表达式
+     @param msg 断言失败时的提示信息
+     */
+    static doesNotMatch(String actual, RegExp expected, String msg = "");
 
     /*! @brief 测试数值近似等于预期值，否则断言失败
      @param actual 要测试的数值
@@ -332,11 +363,48 @@ module assert
      */
     static throws(Function block, String msg = "");
 
+    /*! @brief 测试给定的代码会抛出错误，未抛出则断言失败
+     @param block 指定测试的代码，以函数形式给出
+     @param error 指定的错误，可以是 RegExp/Function/Object/Error
+     @param msg 断言失败时的提示信息
+     */
+    static throws(Function block, Value error, String msg = "");
+
     /*! @brief 测试给定的代码不会抛出错误，抛出则断言失败
      @param block 指定测试的代码，以函数形式给出
      @param msg 断言失败时的提示信息
      */
     static doesNotThrow(Function block, String msg = "");
+
+    /*! @brief 测试给定的代码会抛出错误，未抛出则断言失败
+     @param block 指定测试的代码，以函数形式给出
+     @param msg 断言失败时的提示信息
+     @return 返回一个 Promise
+     */
+    static Promise rejects(Function block, String msg = "");
+
+    /*! @brief 测试给定的代码会抛出错误，未抛出则断言失败
+     @param block 指定测试的代码，以函数形式给出
+     @param error 指定的错误，可以是 RegExp/Function/Object/Error
+     @param msg 断言失败时的提示信息
+     @return 返回一个 Promise
+     */
+    static Promise rejects(Function block, Value error, String msg = "");
+
+    /*! @brief 测试给定的代码会抛出错误，未抛出则断言失败
+     @param result 指定测试的代码，以Promise形式给出
+     @param msg 断言失败时的提示信息
+     @return 返回一个 Promise
+     */
+    static Promise rejects(Promise result, String msg = "");
+
+    /*! @brief 测试给定的代码会抛出错误，未抛出则断言失败
+     @param result 指定测试的代码，以Promise形式给出
+     @param error 指定的错误，可以是 RegExp/Function/Object/Error
+     @param msg 断言失败时的提示信息
+     @return 返回一个 Promise
+     */
+    static Promise rejects(Promise result, Value error, String msg = "");
 
     /*! @brief 如果参数为真，则抛出
      @param object 参数

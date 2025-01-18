@@ -8,15 +8,18 @@ global.full_test = process.argv.indexOf('--full') >= 0;
 const CI_SUBPROCESS_CHECK = !!process.env.CI_SUBPROCESS_CHECK;
 
 run("./assert_test.js");
+run("./assertion_error_test.js");
 run("./test_test.js");
 run("./class_test.js");
 run("./global_test.js");
+run("./perf_test.js");
 run("./console_test.js");
 run("./icu_test.js");
 run("./punycode_test.js");
 run("./timer_test.js");
 run("./buffer_test.js");
 run("./path_test.js");
+run("./path_match_test.js");
 run("./util_test.js");
 run("./types_test.js");
 run("./promise_test.js");
@@ -81,9 +84,9 @@ if (global.full_test) {
 
 run("./selfzip_test.js");
 
-run("./profiler_test.js");
-
 run("./v8_test.js");
+
+run("./v8_bug_test.js");
 
 run("./getter_throw.js")
 
@@ -92,5 +95,3 @@ run("./internal_test/helpers.js")
 if (process.env.CI) {
     run("./opt_tools_test/index.js")
 }
-
-test.run();

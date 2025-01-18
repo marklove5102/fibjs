@@ -62,6 +62,8 @@ public:
     virtual result_t set_maxHeadersCount(int32_t newVal);
     virtual result_t get_maxHeaderSize(int32_t& retVal);
     virtual result_t set_maxHeaderSize(int32_t newVal);
+    virtual result_t get_maxChunkSize(int32_t& retVal);
+    virtual result_t set_maxChunkSize(int32_t newVal);
     virtual result_t get_maxBodySize(int32_t& retVal);
     virtual result_t set_maxBodySize(int32_t newVal);
     virtual result_t get_socket(obj_ptr<Stream_base>& retVal);
@@ -117,6 +119,14 @@ public:
 
         return 0;
     }
+
+    exlib::string prepareHeaders();
+
+    result_t readHeader(Stream_base* stm, AsyncEvent* ac);
+    result_t readBody(AsyncEvent* ac);
+
+private:
+    result_t readFrom(Stream_base* stm, AsyncEvent* ac, bool headerOnly);
 
 public:
     obj_ptr<HttpMessage> m_message;

@@ -1,4 +1,5 @@
 /// <reference path="../_import/_fibjs.d.ts" />
+/// <reference path="../module/assert_strict.d.ts" />
 /**
  * @description 断言测试模块，如果测试值为假，则报错，报错行为可设定继续运行或者错误抛出
  * 
@@ -19,6 +20,11 @@
  */
 declare module 'assert' {
     /**
+     * @description 断言错误对象 
+     */
+    const AssertionError: (...args: any[])=>any;
+
+    /**
      * @description 测试数值为真，为假则断言失败
      *      @param actual 要测试的数值
      *      @param msg 断言失败时的提示信息
@@ -27,12 +33,14 @@ declare module 'assert' {
     function Function(actual?: any, msg?: string): void;
 
     /**
-     * @description 测试数值为真，为假则断言失败
-     *      @param actual 要测试的数值
-     *      @param msg 断言失败时的提示信息
-     *      
+     * ! 测试数值为真，为假则断言失败，是 assert 模块的别名 
      */
-    function ok(actual: any, msg?: string): void;
+    const ok: typeof import ('assert');
+
+    /**
+     * ! 严格测试模块，参见 assert_strict 模块 
+     */
+    const strict: typeof import ('assert_strict');
 
     /**
      * @description 测试数值为假，为真则断言失败
@@ -95,6 +103,42 @@ declare module 'assert' {
      *      
      */
     function notDeepEqual(actual: any, expected: any, msg?: string): void;
+
+    /**
+     * @description 测试数值严格深度等于预期值，不相等则断言失败
+     *      @param actual 要测试的数值
+     *      @param expected 预期的数值
+     *      @param msg 断言失败时的提示信息
+     *      
+     */
+    function deepStrictEqual(actual: any, expected: any, msg?: string): void;
+
+    /**
+     * @description 测试数值不严格深度等于预期值，相等则断言失败
+     *      @param actual 要测试的数值
+     *      @param expected 预期的数值
+     *      @param msg 断言失败时的提示信息
+     *      
+     */
+    function notDeepStrictEqual(actual: any, expected: any, msg?: string): void;
+
+    /**
+     * @description 测试字符串包含预期字符串，否则断言失败
+     *      @param actual 要测试的字符串
+     *      @param expected 预期的正则表达式
+     *      @param msg 断言失败时的提示信息
+     *      
+     */
+    function match(actual: string, expected: FIBJS.GeneralObject, msg?: string): void;
+
+    /**
+     * @description 测试字符串不包含预期字符串，否则断言失败
+     *      @param actual 要测试的字符串
+     *      @param expected 预期的正则表达式
+     *      @param msg 断言失败时的提示信息
+     *      
+     */
+    function doesNotMatch(actual: string, expected: FIBJS.GeneralObject, msg?: string): void;
 
     /**
      * @description 测试数值近似等于预期值，否则断言失败
@@ -433,12 +477,61 @@ declare module 'assert' {
     */
 
     /**
+     * @description 测试给定的代码会抛出错误，未抛出则断言失败
+     *      @param block 指定测试的代码，以函数形式给出
+     *      @param error 指定的错误，可以是 RegExp/Function/Object/Error
+     *      @param msg 断言失败时的提示信息
+     *      
+     */
+    /* Illegal function name 'throws' can't be used here
+    function throws(block: (...args: any[])=>any, error: any, msg?: string): void;
+    */
+
+    /**
      * @description 测试给定的代码不会抛出错误，抛出则断言失败
      *      @param block 指定测试的代码，以函数形式给出
      *      @param msg 断言失败时的提示信息
      *      
      */
     function doesNotThrow(block: (...args: any[])=>any, msg?: string): void;
+
+    /**
+     * @description 测试给定的代码会抛出错误，未抛出则断言失败
+     *      @param block 指定测试的代码，以函数形式给出
+     *      @param msg 断言失败时的提示信息
+     *      @return 返回一个 Promise
+     *      
+     */
+    function rejects(block: (...args: any[])=>any, msg?: string): Promise;
+
+    /**
+     * @description 测试给定的代码会抛出错误，未抛出则断言失败
+     *      @param block 指定测试的代码，以函数形式给出
+     *      @param error 指定的错误，可以是 RegExp/Function/Object/Error
+     *      @param msg 断言失败时的提示信息
+     *      @return 返回一个 Promise
+     *      
+     */
+    function rejects(block: (...args: any[])=>any, error: any, msg?: string): Promise;
+
+    /**
+     * @description 测试给定的代码会抛出错误，未抛出则断言失败
+     *      @param result 指定测试的代码，以Promise形式给出
+     *      @param msg 断言失败时的提示信息
+     *      @return 返回一个 Promise
+     *      
+     */
+    function rejects(result: Promise, msg?: string): Promise;
+
+    /**
+     * @description 测试给定的代码会抛出错误，未抛出则断言失败
+     *      @param result 指定测试的代码，以Promise形式给出
+     *      @param error 指定的错误，可以是 RegExp/Function/Object/Error
+     *      @param msg 断言失败时的提示信息
+     *      @return 返回一个 Promise
+     *      
+     */
+    function rejects(result: Promise, error: any, msg?: string): Promise;
 
     /**
      * @description 如果参数为真，则抛出

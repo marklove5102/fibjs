@@ -146,6 +146,23 @@ declare module 'rtc' {
     function stopListen(local_port: number): void;
 
     /**
+     * @description 启动一个 STUN/TURN 服务器
+     * 
+     *      startServer 方法用于启动一个 STUN/TURN 服务器，用于 NAT 穿透和连接建立。config 参数是一个对象，包含以下字段：
+     *         - `credentials` - 服务器凭证，包含 { `username`: `password`} 的键值对
+     *         - `maxAllocations` - 最大分配数
+     *         - `maxPeers` - 最大对等数
+     *         - `bindAddress` - 绑定地址
+     *         - `port` - 端口
+     *         - `relayPortRangeBegin` - TURN 服务器端口范围开始
+     *         - `relayPortRangeEnd` - TURN 服务器端口范围结束
+     * 
+     *      @param config 服务器配置
+     *     
+     */
+    function startServer(config: FIBJS.GeneralObject): void;
+
+    /**
      * @@description 设置 WebRTC 全局 SCTP 参数
      * 
      *      setSctpSettings 方法用于设置 WebRTC 全局 SCTP 参数，新设置的参数会立即生效。已经存在的连接不受影响。支持以下参数：
@@ -166,6 +183,20 @@ declare module 'rtc' {
      *     
      */
     function setSctpSettings(settings: FIBJS.GeneralObject): void;
+
+    /**
+     * @description 查询和设置 WebRTC 日志级别
+     * 
+     *      loglevel 属性用于查询和设置 WebRTC 日志级别，新设置的级别会立即生效。支持以下级别：
+     *         - `none` - 不输出日志
+     *         - `error` - 输出错误日志
+     *         - `warning` - 输出警告日志
+     *         - `info` - 输出信息日志
+     *         - `debug` - 输出调试日志
+     *         - `verbose` - 输出详细日志
+     *     
+     */
+    var loglevel: string;
 
 }
 

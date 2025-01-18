@@ -32,7 +32,7 @@ void on_click_menu(uint32_t id);
 
 HICON LoadPngIcon(const BYTE* pngData, size_t pngSize);
 
-void putGuiPool(AsyncEvent* ac)
+void os_putGuiPool(AsyncEvent* ac)
 {
     PostMessage(s_worker, WM_ASYNC_EVENT, 0, (LPARAM)ac);
 }
@@ -229,7 +229,8 @@ void WebView::config()
         if (m_options->frame.value()) {
             dwStyle |= WS_THICKFRAME;
 
-            if (m_options->caption.value())
+            obj_ptr<TitlebarOptions> titlebar_opt = std::get<obj_ptr<TitlebarOptions>>(m_options->titlebar.value());
+            if (titlebar_opt->style.value() == "show")
                 dwStyle |= WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 
             if (!m_options->resizable.value()) {
@@ -258,6 +259,18 @@ void WebView::config()
         nHeight = nHeight * dpix / 96;
     else
         nHeight = actualDesktop.bottom * 3 / 4;
+
+    if (m_options->minWidth.has_value())
+        nWidth = std::max(nWidth, m_options->minWidth.value() * dpix / 96);
+
+    if (m_options->minHeight.has_value())
+        nHeight = std::max(nHeight, m_options->minHeight.value() * dpix / 96);
+
+    if (m_options->maxWidth.has_value())
+        nWidth = std::min(nWidth, m_options->maxWidth.value() * dpix / 96);
+
+    if (m_options->maxHeight.has_value())
+        nHeight = std::min(nHeight, m_options->maxHeight.value() * dpix / 96);
 
     if (x != CW_USEDEFAULT)
         x = x * dpix / 96;

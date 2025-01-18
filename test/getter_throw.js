@@ -102,17 +102,17 @@ describe('getter throw', () => {
     it('console', () => {
         checkthrow([
             () => {
-                console.add(arr);
+                console.use(arr);
             },
             () => {
-                console.add(arr2);
+                console.use(arr2);
             },
             () => {
-                console.add(obj2);
+                console.use(obj2);
             },
         ]);
         assert.throws(() => {
-            console.add(obj);
+            console.use(obj);
         })
     });
 
@@ -408,4 +408,3 @@ describe('getter throw', () => {
     })
 });
 
-require.main === module && test.run(console.DEBUG);

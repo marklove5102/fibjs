@@ -21,7 +21,7 @@ extern exlib::string COLOR_MAGENTA;
 extern exlib::string COLOR_CYAN;
 extern exlib::string COLOR_WHITE;
 extern exlib::string COLOR_NORMAL;
-extern exlib::string COLOR_GREY;
+extern exlib::string COLOR_GRAY;
 
 extern exlib::string COLOR_LIGHTRED;
 extern exlib::string COLOR_LIGHTGREEN;
@@ -31,7 +31,7 @@ extern exlib::string COLOR_LIGHTMAGENTA;
 extern exlib::string COLOR_LIGHTCYAN;
 extern exlib::string COLOR_LIGHTWHITE;
 
-extern exlib::string COLOR_TITLE;
+extern exlib::string COLOR_BOLD;
 
 inline exlib::string color_string(exlib::string lead, exlib::string str, bool color = true)
 {

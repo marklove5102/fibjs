@@ -7,6 +7,7 @@
 /// <reference path="../interface/HttpsServer.d.ts" />
 /// <reference path="../interface/HttpHandler.d.ts" />
 /// <reference path="../interface/HttpRepeater.d.ts" />
+/// <reference path="../interface/EventSource.d.ts" />
 /// <reference path="../interface/Handler.d.ts" />
 /// <reference path="../interface/Stream.d.ts" />
 /// <reference path="../interface/SeekableStream.d.ts" />
@@ -85,6 +86,11 @@ declare module 'http' {
     const Repeater: typeof Class_HttpRepeater;
 
     /**
+     * @description 创建一个事件源接口，用于服务器推送事件，参见 EventSource 
+     */
+    const EventSource: typeof Class_EventSource;
+
+    /**
      * @description 返回标准的 HTTP 响应状态码的集合，以及各自的简短描述。 
      */
     const STATUS_CODES: FIBJS.GeneralObject;
@@ -128,6 +134,11 @@ declare module 'http' {
      * @description 查询和设置最大请求头长度，缺省为 8192 
      */
     var maxHeaderSize: number;
+
+    /**
+     * @description 查询和设置 chunk 最大尺寸，以 MB 为单位，缺省为 2 
+     */
+    var maxChunkSize: number;
 
     /**
      * @description 查询和设置 body 最大尺寸，以 MB 为单位，缺省为 -1，不限制尺寸 

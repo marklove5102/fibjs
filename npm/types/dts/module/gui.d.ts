@@ -35,7 +35,10 @@ declare module 'gui' {
      *          "maxWidth": 0, // specify the maximum width of the window, default is no limit
      *          "maxHeight": 0, // specify the maximum height of the window, default is no limit
      *          "frame": true, // specify whether the window has frame, default is true
-     *          "caption": true, // specify whether the window has caption, default is true
+     *          "titlebar": "show" | {  // specify the titlebar style: "show" (default), "hide", "transparent"
+     *             "style": "show", // specify the titlebar style: "show" (default), "hide", "transparent"
+     *             "height": "nprmal" // specify the titlebar height: "normal" (default), "tall", not work in macos
+     *          },
      *          "resizable": true, // specify whether the window is resizable, default is true
      *          "menu": menu, // specify the menu of the window, can be a Menu object or a menu item array, default is null
      *          "maximize": false, // specify whether the window is maximized, default is false
@@ -72,7 +75,10 @@ declare module 'gui' {
      *          "maxWidth": 0, // specify the maximum width of the window, default is no limit
      *          "maxHeight": 0, // specify the maximum height of the window, default is no limit
      *          "frame": true, // specify whether the window has frame, default is true
-     *          "caption": true, // specify whether the window has caption, default is true
+     *          "titlebar": "show" | {  // specify the titlebar style: "show" (default), "hide", "transparent"
+     *             "style": "show", // specify the titlebar style: "show" (default), "hide", "transparent"
+     *             "height": "nprmal" // specify the titlebar height: "normal" (default), "tall", not work in macos
+     *          },
      *          "resizable": true, // specify whether the window is resizable, default is true
      *          "menu": menu, // specify the menu of the window, can be a Menu object or a menu item array, default is null
      *          "maximize": false, // specify whether the window is maximized, default is false
@@ -106,7 +112,10 @@ declare module 'gui' {
      *          "maxWidth": 0, // specify the maximum width of the window, default is no limit
      *          "maxHeight": 0, // specify the maximum height of the window, default is no limit
      *          "frame": true, // specify whether the window has frame, default is true
-     *          "caption": true, // specify whether the window has caption, default is true
+     *          "titlebar": "show" | {  // specify the titlebar style: "show" (default), "hide", "transparent"
+     *             "style": "show", // specify the titlebar style: "show" (default), "hide", "transparent"
+     *             "height": "nprmal" // specify the titlebar height: "normal" (default), "tall", not work in macos
+     *          },
      *          "resizable": true, // specify whether the window is resizable, default is true
      *          "menu": menu, // specify the menu of the window, can be a Menu object or a menu item array, default is null
      *          "maximize": false, // specify whether the window is maximized, default is false
@@ -216,6 +225,29 @@ declare module 'gui' {
     function confirm(title: string, message: string): boolean;
 
     function confirm(title: string, message: string, callback: (err: Error | undefined | null, retVal: boolean)=>any): void;
+
+    /**
+     * @description 弹出一个输入框
+     *      @param message 消息内容
+     *      @param password 是否为密码输入，默认为 false
+     *      @return 返回用户输入的内容
+     *     
+     */
+    function input(message: string, password?: boolean): string;
+
+    function input(message: string, password?: boolean, callback?: (err: Error | undefined | null, retVal: string)=>any): void;
+
+    /**
+     * @description 弹出一个输入框
+     *      @param title 消息标题
+     *      @param message 消息内容
+     *      @param password 是否为密码输入，默认为 false
+     *      @return 返回用户输入的内容
+     *     
+     */
+    function input(title: string, message: string, password?: boolean): string;
+
+    function input(title: string, message: string, password?: boolean, callback?: (err: Error | undefined | null, retVal: string)=>any): void;
 
     /**
      * @description 弹出一个选择文件对话框

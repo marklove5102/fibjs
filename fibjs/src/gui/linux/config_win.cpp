@@ -18,6 +18,7 @@
 #include "ifs/gui.h"
 #include "ifs/fs.h"
 #include "ifs/mime.h"
+#include "ifs/encoding.h"
 #include "EventInfo.h"
 #include "WebView.h"
 #include "Buffer.h"
@@ -28,7 +29,7 @@ namespace fibjs {
 
 static GMainLoop* main_loop = nullptr;
 
-void putGuiPool(AsyncEvent* ac)
+void os_putGuiPool(AsyncEvent* ac)
 {
     g_idle_add([](void* _p) -> gboolean {
         AsyncEvent* p = (AsyncEvent*)_p;
@@ -42,6 +43,8 @@ void putGuiPool(AsyncEvent* ac)
 static void fs_scheme_request_callback(WebKitURISchemeRequest* request, gpointer user_data)
 {
     exlib::string fname = webkit_uri_scheme_request_get_path(request);
+    encoding_base::decodeURI(fname, fname);
+
     async([fname, request]() {
         Variant var;
         result_t hr = fs_base::cc_readFile(fname, "", var, Isolate::main());
@@ -199,7 +202,8 @@ void WebView::config()
             gtk_header_bar_set_show_close_button((GtkHeaderBar*)titlebar, TRUE);
             gtk_window_set_titlebar(window, titlebar);
 
-            if (!m_options->caption.value()) {
+            obj_ptr<TitlebarOptions> titlebar_opt = std::get<obj_ptr<TitlebarOptions>>(m_options->titlebar.value());
+            if (titlebar_opt->style.value() != "show") {
                 gtk_widget_hide(titlebar);
                 gtk_widget_destroy(titlebar);
 
@@ -225,6 +229,18 @@ void WebView::config()
 
     if (nHeight == CW_USEDEFAULT)
         nHeight = screen_height * 3 / 4;
+
+    if (m_options->minWidth.has_value())
+        nWidth = std::max(nWidth, m_options->minWidth.value());
+
+    if (m_options->minHeight.has_value())
+        nHeight = std::max(nHeight, m_options->minHeight.value());
+
+    if (m_options->maxWidth.has_value())
+        nWidth = std::min(nWidth, m_options->maxWidth.value());
+
+    if (m_options->maxHeight.has_value())
+        nHeight = std::min(nHeight, m_options->maxHeight.value());
 
     if (x == CW_USEDEFAULT)
         x = (screen_width - nWidth) / 2;

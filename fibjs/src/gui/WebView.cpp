@@ -83,11 +83,13 @@ void WebView::app_rpc(exlib::string json)
         result->Set(context, keyId, v).IsJust();
 
         do {
-            v8::Local<v8::Object> app = GetPrivate("app").As<v8::Object>();
-            if (app.IsEmpty() || !app->IsObject()) {
+            v = GetPrivate("app");
+            if (v.IsEmpty() || !v->IsObject()) {
                 result->Set(context, isolate->NewString("error"), isolate->NewString("app is required")).IsJust();
                 break;
             }
+
+            v8::Local<v8::Object> app = v.As<v8::Object>();
 
             exlib::string method;
             hr = GetConfigValue(isolate, req, "method", method, true);
@@ -166,6 +168,23 @@ result_t WebView::setup(v8::Local<v8::Object> opt)
     if (hr < 0)
         return hr;
 
+    obj_ptr<TitlebarOptions> titlebar;
+    auto& titlebar_opt = m_options->titlebar.value();
+    if (std::holds_alternative<exlib::string>(titlebar_opt)) {
+        titlebar = new TitlebarOptions();
+        titlebar->style = std::get<exlib::string>(titlebar_opt);
+        m_options->titlebar = titlebar;
+    } else
+        titlebar = std::get<obj_ptr<TitlebarOptions>>(titlebar_opt);
+
+    exlib::string& titlebar_style = titlebar->style.value();
+    if (titlebar_style != "show" && titlebar_style != "hide" && titlebar_style != "transparent")
+        return Runtime::setError("WebView: titlebar style must be 'show', 'hide' or 'transparent', but got '" + titlebar_style + "'");
+
+    exlib::string& titlebar_height = titlebar->height.value();
+    if (titlebar_height != "normal" && titlebar_height != "tall")
+        return Runtime::setError("WebView: titlebar height must be 'normal', 'tall', but got '" + titlebar_height + "'");
+
     if (m_options->icon.has_value()) {
         Variant var;
         hr = fs_base::ac_readFile(m_options->icon.value(), "", var);
@@ -218,8 +237,6 @@ result_t WebView::check_status(AsyncEvent* ac)
 
 result_t WebView::async_open()
 {
-    start_gui();
-
     isolate_ref();
     m_self = new ValueHolder(wrap());
 

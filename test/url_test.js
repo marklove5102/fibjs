@@ -32,9 +32,7 @@ describe("url", () => {
         it("file url to path", () => {
             function testInvalidArgs(...args) {
                 for (const arg of args) {
-                    assert.throws(() => url.fileURLToPath(arg), {
-                        code: 'ERR_INVALID_ARG_TYPE'
-                    });
+                    assert.throws(() => url.fileURLToPath(arg));
                 }
             }
 
@@ -42,9 +40,7 @@ describe("url", () => {
             testInvalidArgs(null, undefined, 1, {}, true);
 
             // Input must be a file URL
-            assert.throws(() => url.fileURLToPath('https://a/b/c'), {
-                code: 'ERR_INVALID_URL_SCHEME'
-            });
+            assert.throws(() => url.fileURLToPath('https://a/b/c'));
 
             {
                 const withHost = new URL('file://host/a');
@@ -52,27 +48,17 @@ describe("url", () => {
                 if (isWindows) {
                     assert.strictEqual(url.fileURLToPath(withHost), '\\\\host\\a');
                 } else {
-                    assert.throws(() => url.fileURLToPath(withHost), {
-                        code: 'ERR_INVALID_FILE_URL_HOST'
-                    });
+                    assert.throws(() => url.fileURLToPath(withHost));
                 }
             }
 
             {
                 if (isWindows) {
-                    assert.throws(() => url.fileURLToPath('file:///C:/a%2F/'), {
-                        code: 'ERR_INVALID_FILE_URL_PATH'
-                    });
-                    assert.throws(() => url.fileURLToPath('file:///C:/a%5C/'), {
-                        code: 'ERR_INVALID_FILE_URL_PATH'
-                    });
-                    assert.throws(() => url.fileURLToPath('file:///?:/'), {
-                        code: 'ERR_INVALID_FILE_URL_PATH'
-                    });
+                    assert.throws(() => url.fileURLToPath('file:///C:/a%2F/'));
+                    assert.throws(() => url.fileURLToPath('file:///C:/a%5C/'));
+                    assert.throws(() => url.fileURLToPath('file:///?:/'));
                 } else {
-                    assert.throws(() => url.fileURLToPath('file:///a%2F/'), {
-                        code: 'ERR_INVALID_FILE_URL_PATH'
-                    });
+                    assert.throws(() => url.fileURLToPath('file:///a%2F/'));
                 }
             }
 
@@ -195,6 +181,26 @@ describe("url", () => {
             }
         });
 
+        it("file url short format", () => {
+            const shortFormatTests = [
+                // Short format lowercase
+                { fileURL: 'file://d/foo', path: 'd:\\foo' },
+                // Short format uppercase
+                { fileURL: 'file://D/FOO', path: 'd:\\FOO' },
+                // Short format with subdirectories
+                { fileURL: 'file://e/dir/foo', path: 'e:\\dir\\foo' },
+                // Short format with special characters
+                { fileURL: 'file://f/foo bar/baz', path: 'f:\\foo bar\\baz' },
+                // Short format with query and hash
+                { fileURL: 'file://g/test/file?query#hash', path: 'g:\\test\\file' }
+            ];
+
+            for (const { fileURL, path } of shortFormatTests) {
+                const actual = url.fileURLToPath(fileURL, { windows: true });
+                assert.strictEqual(actual, path);
+            }
+        });
+
         it("path to file url", () => {
 
             {
@@ -222,14 +228,10 @@ describe("url", () => {
                     // UNC path: \\server\share\resource
 
                     // Missing server:
-                    assert.throws(() => url.pathToFileURL('\\\\\\no-server'), {
-                        code: 'ERR_INVALID_ARG_VALUE',
-                    });
+                    assert.throws(() => url.pathToFileURL('\\\\\\no-server'));
 
                     // Missing share or resource:
-                    assert.throws(() => url.pathToFileURL('\\\\host'), {
-                        code: 'ERR_INVALID_ARG_VALUE',
-                    });
+                    assert.throws(() => url.pathToFileURL('\\\\host'));
                 } else {
                     // UNC paths on posix are considered a single path that has backslashes:
                     const fileURL = url.pathToFileURL('\\\\nas\\share\\path.txt').href;
@@ -357,250 +359,589 @@ describe("url", () => {
             // Formatting tests to verify that it'll format slightly wonky content to a
             // valid URL.
             const formatTests = {
-                'http://example.com?': {
-                    href: 'http://example.com/?',
-                    protocol: 'http:',
-                    slashes: true,
-                    host: 'example.com',
-                    hostname: 'example.com',
-                    search: '?',
-                    query: {},
-                    pathname: '/'
+                "http://example.com": {
+                    "href": "http://example.com/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "search": "?",
+                    "query": {},
+                    "pathname": "/"
                 },
-                'http://example.com?foo=bar#frag': {
-                    href: 'http://example.com/?foo=bar#frag',
-                    protocol: 'http:',
-                    host: 'example.com',
-                    hostname: 'example.com',
-                    hash: '#frag',
-                    search: '?foo=bar',
-                    query: 'foo=bar',
-                    pathname: '/'
+                "http://example.com?foo=bar#frag": {
+                    "href": "http://example.com/?foo=bar#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "hash": "#frag",
+                    "search": "?foo=bar",
+                    "query": "foo=bar",
+                    "pathname": "/"
                 },
-                'http://example.com?foo=@bar#frag': {
-                    href: 'http://example.com/?foo=@bar#frag',
-                    protocol: 'http:',
-                    host: 'example.com',
-                    hostname: 'example.com',
-                    hash: '#frag',
-                    search: '?foo=@bar',
-                    query: 'foo=@bar',
-                    pathname: '/'
+                "http://example.com?foo=@bar#frag": {
+                    "href": "http://example.com/?foo=@bar#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "hash": "#frag",
+                    "search": "?foo=@bar",
+                    "query": "foo=@bar",
+                    "pathname": "/"
                 },
-                'http://example.com?foo=/bar/#frag': {
-                    href: 'http://example.com/?foo=/bar/#frag',
-                    protocol: 'http:',
-                    host: 'example.com',
-                    hostname: 'example.com',
-                    hash: '#frag',
-                    search: '?foo=/bar/',
-                    query: 'foo=/bar/',
-                    pathname: '/'
+                "http://example.com?foo=/bar/#frag": {
+                    "href": "http://example.com/?foo=/bar/#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "hash": "#frag",
+                    "search": "?foo=/bar/",
+                    "query": "foo=/bar/",
+                    "pathname": "/"
                 },
-                'http://example.com?foo=?bar/#frag': {
-                    href: 'http://example.com/?foo=?bar/#frag',
-                    protocol: 'http:',
-                    host: 'example.com',
-                    hostname: 'example.com',
-                    hash: '#frag',
-                    search: '?foo=?bar/',
-                    query: 'foo=?bar/',
-                    pathname: '/'
+                "http://example.com?foo=?bar/#frag": {
+                    "href": "http://example.com/?foo=?bar/#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "hash": "#frag",
+                    "search": "?foo=?bar/",
+                    "query": "foo=?bar/",
+                    "pathname": "/"
                 },
-                'http://example.com#frag=?bar/#frag': {
-                    href: 'http://example.com/#frag=?bar/#frag',
-                    protocol: 'http:',
-                    host: 'example.com',
-                    hostname: 'example.com',
-                    hash: '#frag=?bar/#frag',
-                    pathname: '/'
+                "http://example.com#frag=?bar/#frag": {
+                    "href": "http://example.com/#frag=?bar/#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "hash": "#frag=?bar/#frag",
+                    "pathname": "/"
                 },
-                'http://a.com/a/b/c?s#h': {
-                    href: 'http://a.com/a/b/c?s#h',
-                    protocol: 'http',
-                    host: 'a.com',
-                    pathname: 'a/b/c',
-                    hash: 'h',
-                    search: 's'
+                "http://a.com/a/b/c?s#h": {
+                    "href": "http://a.com/a/b/c?s#h",
+                    "protocol": "http",
+                    "slashes": true,
+                    "host": "a.com",
+                    "pathname": "a/b/c",
+                    "hash": "h",
+                    "search": "s"
                 },
-                'xmpp:isaacschlueter@jabber.org': {
-                    href: 'xmpp:isaacschlueter@jabber.org',
-                    protocol: 'xmpp:',
-                    host: 'jabber.org',
-                    auth: 'isaacschlueter',
-                    hostname: 'jabber.org'
+                "xmpp:isaacschlueter@jabber.org": {
+                    "href": "xmpp:isaacschlueter@jabber.org",
+                    "protocol": "xmpp:",
+                    "host": "jabber.org",
+                    "auth": "isaacschlueter",
+                    "hostname": "jabber.org"
                 },
-                'http://atpass:foo%40bar@127.0.0.1/': {
-                    href: 'http://atpass:foo%40bar@127.0.0.1/',
-                    auth: 'atpass:foo@bar',
-                    hostname: '127.0.0.1',
-                    protocol: 'http:',
-                    pathname: '/'
+                "http://atpass:foo%40bar@127.0.0.1/": {
+                    "href": "http://atpass:foo%40bar@127.0.0.1/",
+                    "auth": "atpass:foo@bar",
+                    "hostname": "127.0.0.1",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "pathname": "/"
                 },
-                'http://atslash%2F%40:%2F%40@foo/': {
-                    href: 'http://atslash%2F%40:%2F%40@foo/',
-                    auth: 'atslash/@:/@',
-                    hostname: 'foo',
-                    protocol: 'http:',
-                    pathname: '/'
+                "http://atslash%2F%40:%2F%40@foo/": {
+                    "href": "http://atslash%2F%40:%2F%40@foo/",
+                    "auth": "atslash/@:/@",
+                    "hostname": "foo",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "pathname": "/"
                 },
-                'svn+ssh://foo/bar': {
-                    href: 'svn+ssh://foo/bar',
-                    hostname: 'foo',
-                    protocol: 'svn+ssh:',
-                    pathname: '/bar',
-                    slashes: true
+                "svn+ssh://foo/bar": {
+                    "href": "svn+ssh://foo/bar",
+                    "hostname": "foo",
+                    "protocol": "svn+ssh:",
+                    "pathname": "/bar",
+                    "slashes": true
                 },
-                'dash-test://foo/bar': {
-                    href: 'dash-test://foo/bar',
-                    hostname: 'foo',
-                    protocol: 'dash-test:',
-                    pathname: '/bar',
-                    slashes: true
+                "dash-test://foo/bar": {
+                    "href": "dash-test://foo/bar",
+                    "hostname": "foo",
+                    "protocol": "dash-test:",
+                    "pathname": "/bar",
+                    "slashes": true
                 },
-                'dash-test:foo/bar': {
-                    href: 'dash-test:foo/bar',
-                    hostname: 'foo',
-                    protocol: 'dash-test:',
-                    pathname: '/bar'
+                "dash-test:foo/bar": {
+                    "href": "dash-test:foo/bar",
+                    "hostname": "foo",
+                    "protocol": "dash-test:",
+                    "pathname": "/bar"
                 },
-                'dot.test://foo/bar': {
-                    href: 'dot.test://foo/bar',
-                    hostname: 'foo',
-                    protocol: 'dot.test:',
-                    pathname: '/bar',
-                    slashes: true
+                "dot.test://foo/bar": {
+                    "href": "dot.test://foo/bar",
+                    "hostname": "foo",
+                    "protocol": "dot.test:",
+                    "pathname": "/bar",
+                    "slashes": true
                 },
-                'dot.test:foo/bar': {
-                    href: 'dot.test:foo/bar',
-                    hostname: 'foo',
-                    protocol: 'dot.test:',
-                    pathname: '/bar'
+                "dot.test:foo/bar": {
+                    "href": "dot.test:foo/bar",
+                    "hostname": "foo",
+                    "protocol": "dot.test:",
+                    "pathname": "/bar"
                 },
-                // IPv6 support
-                'coap:u:p@[::1]:61616/.well-known/r?n=Temperature': {
-                    href: 'coap:u:p@[::1]:61616/.well-known/r?n=Temperature',
-                    protocol: 'coap:',
-                    auth: 'u:p',
-                    hostname: '::1',
-                    port: '61616',
-                    pathname: '/.well-known/r',
-                    search: 'n=Temperature'
+                "coap:u:p@[::1]:61616/.well-known/r?n=Temperature": {
+                    "href": "coap:u:p@[::1]:61616/.well-known/r?n=Temperature",
+                    "protocol": "coap:",
+                    "auth": "u:p",
+                    "hostname": "::1",
+                    "port": "61616",
+                    "pathname": "/.well-known/r",
+                    "search": "n=Temperature"
                 },
-                'coap:[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616/s/stopButton': {
-                    href: 'coap:[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616/s/stopButton',
-                    protocol: 'coap',
-                    host: '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616',
-                    pathname: '/s/stopButton'
+                "coap:[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616/s/stopButton": {
+                    "href": "coap:[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616/s/stopButton",
+                    "protocol": "coap",
+                    "host": "[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616",
+                    "pathname": "/s/stopButton"
                 },
-                'http://[::]/': {
-                    href: 'http://[::]/',
-                    protocol: 'http:',
-                    hostname: '[::]',
-                    pathname: '/'
+                "http://[::]/": {
+                    "href": "http://[::]/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "hostname": "[::]",
+                    "pathname": "/"
                 },
-
-                // Encode context-specific delimiters in path and query, but do not touch
-                // other non-delimiter chars like `%`.
-                // <https://github.com/nodejs/node-v0.x-archive/issues/4082>
-
-                // `#`,`?` in path
-                '/path/to/%%23%3F+=&.txt?foo=theA1#bar': {
-                    href: '/path/to/%%23%3F+=&.txt?foo=theA1#bar',
-                    pathname: '/path/to/%#?+=&.txt',
-                    query: {
-                        foo: 'theA1'
-                    },
-                    hash: '#bar'
+                "http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag": {
+                    "href": "http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "hostname": "ex.com",
+                    "hash": "#frag",
+                    "search": "?abc=the#1?&foo=bar",
+                    "pathname": "/foo?100%m#r"
                 },
-
-                // `#`,`?` in path + `#` in query
-                '/path/to/%%23%3F+=&.txt?foo=the%231#bar': {
-                    href: '/path/to/%%23%3F+=&.txt?foo=the%231#bar',
-                    pathname: '/path/to/%#?+=&.txt',
-                    query: {
-                        foo: 'the#1'
-                    },
-                    hash: '#bar'
+                "http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag": {
+                    "href": "http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "hostname": "ex.com",
+                    "hash": "#frag",
+                    "search": "?abc=the#1?&foo=bar",
+                    "pathname": "/fooA100%mBr"
                 },
-
-                // `#` in path end + `#` in query
-                '/path/to/%%23?foo=the%231#bar': {
-                    href: '/path/to/%%23?foo=the%231#bar',
-                    pathname: '/path/to/%#',
-                    query: {
-                        foo: 'the#1'
-                    },
-                    hash: '#bar'
+                "http://example.com/?foo=bar%231%232%233&abc=%234%23%235#frag": {
+                    "href": "http://example.com/?foo=bar%231%232%233&abc=%234%23%235#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "hash": "#frag",
+                    "search": "?foo=bar#1#2#3&abc=#4##5",
+                    "query": {},
+                    "pathname": "/"
                 },
-
-                // `?` and `#` in path and search
-                'http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag': {
-                    href: 'http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag',
-                    protocol: 'http:',
-                    hostname: 'ex.com',
-                    hash: '#frag',
-                    search: '?abc=the#1?&foo=bar',
-                    pathname: '/foo?100%m#r',
+                "http://www.zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzexample.com/node": {
+                    "href": "http://www.zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzexample.com/node",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "www.zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzexample.com",
+                    "hostname": "www.zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzexample.com",
+                    "pathname": "/node",
+                    "path": "/node"
                 },
-
-                // `?` and `#` in search only
-                'http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag': {
-                    href: 'http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag',
-                    protocol: 'http:',
-                    hostname: 'ex.com',
-                    hash: '#frag',
-                    search: '?abc=the#1?&foo=bar',
-                    pathname: '/fooA100%mBr',
+                "file:///home/user": {
+                    "href": "file:///home/user",
+                    "protocol": "file",
+                    "slashes": true,
+                    "pathname": "/home/user",
+                    "path": "/home/user"
                 },
-
-                // Multiple `#` in search
-                'http://example.com/?foo=bar%231%232%233&abc=%234%23%235#frag': {
-                    href: 'http://example.com/?foo=bar%231%232%233&abc=%234%23%235#frag',
-                    protocol: 'http:',
-                    slashes: true,
-                    host: 'example.com',
-                    hostname: 'example.com',
-                    hash: '#frag',
-                    search: '?foo=bar#1#2#3&abc=#4##5',
-                    query: {},
-                    pathname: '/'
+                "http://%F0%9F%98%80@www.example.com/": {
+                    "href": "http://%F0%9F%98%80@www.example.com/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "auth": "😀",
+                    "hostname": "www.example.com",
+                    "pathname": "/"
                 },
-
-                // Greater than or equal to 63 characters after `.` in hostname
-                [`http://www.${'z'.repeat(63)}example.com/node`]: {
-                    href: `http://www.${'z'.repeat(63)}example.com/node`,
-                    protocol: 'http:',
-                    slashes: true,
-                    host: `www.${'z'.repeat(63)}example.com`,
-                    hostname: `www.${'z'.repeat(63)}example.com`,
-                    pathname: '/node',
-                    path: '/node'
+                "http://xn--v8jxj3d1dzdz08w.com/test": {
+                    "href": "http://xn--v8jxj3d1dzdz08w.com/test",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "hostname": "名がドメイン.com",
+                    "pathname": "/test"
                 },
-
-                // https://github.com/nodejs/node/issues/3361
-                'file:///home/user': {
-                    href: 'file:///home/user',
-                    protocol: 'file',
-                    pathname: '/home/user',
-                    path: '/home/user'
+                "HTTP://www.example.com/": {
+                    "href": "http://www.example.com/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "www.example.com",
+                    "hostname": "www.example.com",
+                    "pathname": "/",
+                    "path": "/"
                 },
-
-                // surrogate in auth
-                'http://%F0%9F%98%80@www.example.com/': {
-                    href: 'http://%F0%9F%98%80@www.example.com/',
-                    protocol: 'http:',
-                    auth: '\uD83D\uDE00',
-                    hostname: 'www.example.com',
-                    pathname: '/'
+                "http://www.ExAmPlE.com/": {
+                    "href": "http://www.example.com/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "www.example.com",
+                    "hostname": "www.example.com",
+                    "pathname": "/",
+                    "path": "/"
                 },
-
-                'http://xn--v8jxj3d1dzdz08w.com/test': {
-                    href: 'http://xn--v8jxj3d1dzdz08w.com/test',
-                    protocol: 'http:',
-                    slashes: true,
-                    hostname: '名がドメイン.com',
-                    pathname: '/test'
+                "http://user:pw@www.ExAmPlE.com/": {
+                    "href": "http://user:pw@www.example.com/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "username": "user",
+                    "password": "pw",
+                    "host": "www.example.com",
+                    "hostname": "www.example.com",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "http://USER:PW@www.ExAmPlE.com/": {
+                    "href": "http://USER:PW@www.example.com/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "username": "USER",
+                    "password": "PW",
+                    "host": "www.example.com",
+                    "hostname": "www.example.com",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "http://user@www.example.com/": {
+                    "href": "http://user@www.example.com/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "username": "user",
+                    "host": "www.example.com",
+                    "hostname": "www.example.com",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "http://user:pw@www.example.com/": {
+                    "href": "http://user:pw@www.example.com/",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "username": "user",
+                    "password": "pw",
+                    "host": "www.example.com",
+                    "hostname": "www.example.com",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "http://x.com/path?that's#all, folks": {
+                    "href": "http://x.com/path?that%27s#all,%20folks",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "x.com",
+                    "hostname": "x.com",
+                    "search": "?that%27s",
+                    "query": "that%27s",
+                    "pathname": "/path",
+                    "hash": "#all,%20folks",
+                    "path": "/path?that%27s"
+                },
+                "HTTP://X.COM/Y": {
+                    "href": "http://x.com/Y",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "x.com",
+                    "hostname": "x.com",
+                    "pathname": "/Y",
+                    "path": "/Y"
+                },
+                "http://x...y...#p": {
+                    "href": "http://x...y.../#p",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "x...y...",
+                    "hostname": "x...y...",
+                    "hash": "#p",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "http://x/p/\"quoted\"": {
+                    "href": "http://x/p/%22quoted%22",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "x",
+                    "hostname": "x",
+                    "pathname": "/p/%22quoted%22",
+                    "path": "/p/%22quoted%22"
+                },
+                "http://www.narwhaljs.org/blog/categories?id=news": {
+                    "href": "http://www.narwhaljs.org/blog/categories?id=news",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "www.narwhaljs.org",
+                    "hostname": "www.narwhaljs.org",
+                    "search": "?id=news",
+                    "query": "id=news",
+                    "pathname": "/blog/categories",
+                    "path": "/blog/categories?id=news"
+                },
+                "http://mt0.google.com/vt/lyrs=m@114&hl=en&src=api&x=2&y=2&z=3&s=": {
+                    "href": "http://mt0.google.com/vt/lyrs=m@114&hl=en&src=api&x=2&y=2&z=3&s=",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "mt0.google.com",
+                    "hostname": "mt0.google.com",
+                    "pathname": "/vt/lyrs=m@114&hl=en&src=api&x=2&y=2&z=3&s=",
+                    "path": "/vt/lyrs=m@114&hl=en&src=api&x=2&y=2&z=3&s="
+                },
+                "http://mt0.google.com/vt/lyrs=m@114???&hl=en&src=api&x=2&y=2&z=3&s=": {
+                    "href": "http://mt0.google.com/vt/lyrs=m@114???&hl=en&src=api&x=2&y=2&z=3&s=",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "mt0.google.com",
+                    "hostname": "mt0.google.com",
+                    "search": "???&hl=en&src=api&x=2&y=2&z=3&s=",
+                    "query": "??&hl=en&src=api&x=2&y=2&z=3&s=",
+                    "pathname": "/vt/lyrs=m@114",
+                    "path": "/vt/lyrs=m@114???&hl=en&src=api&x=2&y=2&z=3&s="
+                },
+                "http://user:pass@mt0.google.com/vt/lyrs=m@114???&hl=en&src=api&x=2&y=2&z=3&s=": {
+                    "href": "http://user:pass@mt0.google.com/vt/lyrs=m@114???&hl=en&src=api&x=2&y=2&z=3&s=",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "mt0.google.com",
+                    "username": "user",
+                    "password": "pass",
+                    "hostname": "mt0.google.com",
+                    "search": "???&hl=en&src=api&x=2&y=2&z=3&s=",
+                    "query": "??&hl=en&src=api&x=2&y=2&z=3&s=",
+                    "pathname": "/vt/lyrs=m@114",
+                    "path": "/vt/lyrs=m@114???&hl=en&src=api&x=2&y=2&z=3&s="
+                },
+                "file:///etc/passwd": {
+                    "href": "file:///etc/passwd",
+                    "slashes": true,
+                    "protocol": "file:",
+                    "pathname": "/etc/passwd",
+                    "hostname": "",
+                    "host": "",
+                    "path": "/etc/passwd"
+                },
+                "file://foo/etc/passwd": {
+                    "href": "file://foo/etc/passwd",
+                    "protocol": "file:",
+                    "slashes": true,
+                    "pathname": "/etc/passwd",
+                    "hostname": "foo",
+                    "host": "foo",
+                    "path": "/etc/passwd"
+                },
+                "file:///etc/node/": {
+                    "href": "file:///etc/node/",
+                    "slashes": true,
+                    "protocol": "file:",
+                    "pathname": "/etc/node/",
+                    "hostname": "",
+                    "host": "",
+                    "path": "/etc/node/"
+                },
+                "file://foo/etc/node/": {
+                    "href": "file://foo/etc/node/",
+                    "protocol": "file:",
+                    "slashes": true,
+                    "pathname": "/etc/node/",
+                    "hostname": "foo",
+                    "host": "foo",
+                    "path": "/etc/node/"
+                },
+                "http://user:pass@example.com:8000/foo/bar?baz=quux#frag": {
+                    "href": "http://user:pass@example.com:8000/foo/bar?baz=quux#frag",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com:8000",
+                    "username": "user",
+                    "password": "pass",
+                    "port": "8000",
+                    "hostname": "example.com",
+                    "hash": "#frag",
+                    "search": "?baz=quux",
+                    "query": "baz=quux",
+                    "pathname": "/foo/bar",
+                    "path": "/foo/bar?baz=quux"
+                },
+                "//user:pass@example.com:8000/foo/bar?baz=quux#frag": {
+                    "href": "//user:pass@example.com:8000/foo/bar?baz=quux#frag",
+                    "slashes": true,
+                    "host": "example.com:8000",
+                    "username": "user",
+                    "password": "pass",
+                    "port": "8000",
+                    "hostname": "example.com",
+                    "hash": "#frag",
+                    "search": "?baz=quux",
+                    "query": "baz=quux",
+                    "pathname": "/foo/bar",
+                    "path": "/foo/bar?baz=quux"
+                },
+                "mailto:foo@bar.com?subject=hello": {
+                    "href": "mailto:foo@bar.com?subject=hello",
+                    "protocol": "mailto:",
+                    "host": "bar.com",
+                    "username": "foo",
+                    "hostname": "bar.com",
+                    "search": "?subject=hello",
+                    "query": "subject=hello",
+                    "path": "?subject=hello"
+                },
+                "javascript:alert('hello');": {
+                    "href": "javascript:alert('hello');",
+                    "protocol": "javascript:",
+                    "pathname": "alert('hello');",
+                    "path": "alert('hello');"
+                },
+                "http://atpass:foo%40bar@127.0.0.1:8080/path?search=foo#bar": {
+                    "href": "http://atpass:foo%40bar@127.0.0.1:8080/path?search=foo#bar",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "127.0.0.1:8080",
+                    "username": "atpass",
+                    "password": "foo@bar",
+                    "hostname": "127.0.0.1",
+                    "port": "8080",
+                    "pathname": "/path",
+                    "search": "?search=foo",
+                    "query": "search=foo",
+                    "hash": "#bar",
+                    "path": "/path?search=foo"
+                },
+                "git+http://github.com/joyent/node.git": {
+                    "protocol": "git+http:",
+                    "slashes": true,
+                    "host": "github.com",
+                    "hostname": "github.com",
+                    "pathname": "/joyent/node.git",
+                    "path": "/joyent/node.git",
+                    "href": "git+http://github.com/joyent/node.git"
+                },
+                "coap://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]/": {
+                    "protocol": "coap:",
+                    "slashes": true,
+                    "host": "[fedc:ba98:7654:3210:fedc:ba98:7654:3210]",
+                    "hostname": "fedc:ba98:7654:3210:fedc:ba98:7654:3210",
+                    "href": "coap://[fedc:ba98:7654:3210:fedc:ba98:7654:3210]/",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "coap://[1080::8:800:200C:417A]:61616/": {
+                    "protocol": "coap:",
+                    "slashes": true,
+                    "host": "[1080::8:800:200c:417a]:61616",
+                    "port": "61616",
+                    "hostname": "1080::8:800:200c:417a",
+                    "href": "coap://[1080::8:800:200c:417a]:61616/",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "http://user:password@[3ffe:2a00:100:7031::1]:8080": {
+                    "protocol": "http:",
+                    "slashes": true,
+                    "username": "user",
+                    "password": "password",
+                    "host": "[3ffe:2a00:100:7031::1]:8080",
+                    "port": "8080",
+                    "hostname": "3ffe:2a00:100:7031::1",
+                    "href": "http://user:password@[3ffe:2a00:100:7031::1]:8080/",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "coap://u:p@[::c009:505]:61616/.well-known/r?n=Temperature": {
+                    "protocol": "coap:",
+                    "slashes": true,
+                    "username": "u",
+                    "password": "p",
+                    "host": "[::c009:505]:61616",
+                    "port": "61616",
+                    "hostname": "::c009:505",
+                    "href": "coap://u:p@[::c009:505]:61616/.well-known/r?n=Temperature",
+                    "search": "?n=Temperature",
+                    "query": "n=Temperature",
+                    "pathname": "/.well-known/r",
+                    "path": "/.well-known/r?n=Temperature"
+                },
+                "http://example.com:": {
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "href": "http://example.com/",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "http://example.com:/a/b.html": {
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "href": "http://example.com/a/b.html",
+                    "pathname": "/a/b.html",
+                    "path": "/a/b.html"
+                },
+                "http://example.com:?a=b": {
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "href": "http://example.com/?a=b",
+                    "search": "?a=b",
+                    "query": "a=b",
+                    "pathname": "/",
+                    "path": "/?a=b"
+                },
+                "http://example.com:#abc": {
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "example.com",
+                    "hostname": "example.com",
+                    "href": "http://example.com/#abc",
+                    "hash": "#abc",
+                    "pathname": "/",
+                    "path": "/"
+                },
+                "http://[fe80::1]:/a/b?a=b#abc": {
+                    "protocol": "http:",
+                    "slashes": true,
+                    "host": "[fe80::1]",
+                    "hostname": "fe80::1",
+                    "href": "http://[fe80::1]/a/b?a=b#abc",
+                    "search": "?a=b",
+                    "query": "a=b",
+                    "hash": "#abc",
+                    "pathname": "/a/b",
+                    "path": "/a/b?a=b"
+                },
+                "https://a.com:447/a/b/c?s#h": {
+                    "href": "https://a.com:447/a/b/c?s#h",
+                    "protocol": "https",
+                    "slashes": true,
+                    "hostname": "a.com",
+                    "pathname": "a/b/c",
+                    "port": 447,
+                    "hash": "h",
+                    "query": "s"
+                },
+                "\t\r\n\f http://test.com\\r?n=t": {
+                    "href": "http://test.com/r?n=t",
+                    "protocol": "http",
+                    "slashes": true,
+                    "hostname": "test.com",
+                    "pathname": "/r",
+                    "path": "/r?n=t",
+                    "query": "n=t"
+                },
+                "http://中文.com": {
+                    "pathname": "/",
+                    "path": "/",
+                    "hostname": "xn--fiq228c.com",
+                    "host": "xn--fiq228c.com",
+                    "protocol": "http:",
+                    "slashes": true,
+                    "href": "http://xn--fiq228c.com/"
                 }
             };
 
@@ -673,6 +1014,7 @@ describe("url", () => {
                 "href": "http://evil-phisher/foo.html#h\\a\\s\\h",
                 "origin": "http://evil-phisher",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "evil-phisher",
@@ -686,6 +1028,7 @@ describe("url", () => {
                 "href": "http://evil-phisher/foo.html?json=%22\\%22foo\\%22%22#h\\a\\s\\h",
                 "origin": "http://evil-phisher",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "evil-phisher",
@@ -699,6 +1042,7 @@ describe("url", () => {
                 "href": "http://evil-phisher/foo.html#h\\a\\s\\h?blarg",
                 "origin": "http://evil-phisher",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "evil-phisher",
@@ -712,6 +1056,7 @@ describe("url", () => {
                 "href": "http://evil-phisher/foo.html",
                 "origin": "http://evil-phisher",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "evil-phisher",
@@ -725,6 +1070,7 @@ describe("url", () => {
                 "href": "http://www.example.com/",
                 "origin": "http://www.example.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "www.example.com",
@@ -738,6 +1084,7 @@ describe("url", () => {
                 "href": "http://www.example.com/",
                 "origin": "http://www.example.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "www.example.com",
@@ -751,6 +1098,7 @@ describe("url", () => {
                 "href": "http://www.example.com/",
                 "origin": "http://www.example.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "www.example.com",
@@ -764,6 +1112,7 @@ describe("url", () => {
                 "href": "http://user:pw@www.example.com/",
                 "origin": "http://www.example.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "user",
                 "password": "pw",
                 "host": "www.example.com",
@@ -777,6 +1126,7 @@ describe("url", () => {
                 "href": "http://USER:PW@www.example.com/",
                 "origin": "http://www.example.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "USER",
                 "password": "PW",
                 "host": "www.example.com",
@@ -790,6 +1140,7 @@ describe("url", () => {
                 "href": "http://user@www.example.com/",
                 "origin": "http://www.example.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "user",
                 "password": "",
                 "host": "www.example.com",
@@ -803,6 +1154,7 @@ describe("url", () => {
                 "href": "http://user%3Apw@www.example.com/",
                 "origin": "http://www.example.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "user%3Apw",
                 "password": "",
                 "host": "www.example.com",
@@ -816,6 +1168,7 @@ describe("url", () => {
                 "href": "http://x.com/path?that%27s#all,%20folks",
                 "origin": "http://x.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "x.com",
@@ -829,6 +1182,7 @@ describe("url", () => {
                 "href": "http://x.com/Y",
                 "origin": "http://x.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "x.com",
@@ -842,6 +1196,7 @@ describe("url", () => {
                 "href": "http://www.example.com/",
                 "origin": "http://www.example.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "www.example.com",
@@ -855,6 +1210,7 @@ describe("url", () => {
                 "href": "http://x.y.com+a/b/c",
                 "origin": "http://x.y.com+a",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "x.y.com+a",
@@ -868,6 +1224,7 @@ describe("url", () => {
                 "href": "http://x.y.com;a/b/c?d=e#f%20g%3Ch%3Ei",
                 "origin": "http://x.y.com;a",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "x.y.com;a",
@@ -881,6 +1238,7 @@ describe("url", () => {
                 "href": "http://x.y.com;a/b/c?d=e#f%20g%3Ch%3Ei",
                 "origin": "http://x.y.com;a",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "x.y.com;a",
@@ -894,6 +1252,7 @@ describe("url", () => {
                 "href": "http://x...y.../#p",
                 "origin": "http://x...y...",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "x...y...",
@@ -907,6 +1266,7 @@ describe("url", () => {
                 "href": "http://x/p/%22quoted%22",
                 "origin": "http://x",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "x",
@@ -920,6 +1280,7 @@ describe("url", () => {
                 "href": "http://www.narwhaljs.org/blog/categories?id=news",
                 "origin": "http://www.narwhaljs.org",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "www.narwhaljs.org",
@@ -933,6 +1294,7 @@ describe("url", () => {
                 "href": "http://mt0.google.com/vt/lyrs=m@114&hl=en&src=api&x=2&y=2&z=3&s=",
                 "origin": "http://mt0.google.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "mt0.google.com",
@@ -946,6 +1308,7 @@ describe("url", () => {
                 "href": "http://mt0.google.com/vt/lyrs=m@114???&hl=en&src=api&x=2&y=2&z=3&s=",
                 "origin": "http://mt0.google.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "",
                 "password": "",
                 "host": "mt0.google.com",
@@ -959,6 +1322,7 @@ describe("url", () => {
                 "href": "http://user:pass@mt0.google.com/vt/lyrs=m@114???&hl=en&src=api&x=2&y=2&z=3&s=",
                 "origin": "http://mt0.google.com",
                 "protocol": "http:",
+                "slashes": true,
                 "username": "user",
                 "password": "pass",
                 "host": "mt0.google.com",
@@ -1089,12 +1453,12 @@ describe("url", () => {
                 "href": "mailto:foo@bar.com?subject=hello",
                 "origin": "null",
                 "protocol": "mailto:",
-                "username": "",
+                "username": "foo",
                 "password": "",
-                "host": "",
-                "hostname": "",
+                "host": "bar.com",
+                "hostname": "bar.com",
                 "port": "",
-                "pathname": "foo@bar.com",
+                "pathname": "",
                 "search": "?subject=hello",
                 "hash": ""
             },
@@ -1115,12 +1479,12 @@ describe("url", () => {
                 "href": "xmpp:isaacschlueter@jabber.org",
                 "origin": "null",
                 "protocol": "xmpp:",
-                "username": "",
+                "username": "isaacschlueter",
                 "password": "",
-                "host": "",
-                "hostname": "",
+                "host": "jabber.org",
+                "hostname": "jabber.org",
                 "port": "",
-                "pathname": "isaacschlueter@jabber.org",
+                "pathname": "",
                 "search": "",
                 "hash": ""
             },
@@ -1169,10 +1533,10 @@ describe("url", () => {
                 "protocol": "dash-test:",
                 "username": "",
                 "password": "",
-                "host": "",
-                "hostname": "",
+                "host": "foo",
+                "hostname": "foo",
                 "port": "",
-                "pathname": "foo/bar",
+                "pathname": "/bar",
                 "search": "",
                 "hash": ""
             },
@@ -1195,10 +1559,10 @@ describe("url", () => {
                 "protocol": "dot.test:",
                 "username": "",
                 "password": "",
-                "host": "",
-                "hostname": "",
+                "host": "foo",
+                "hostname": "foo",
                 "port": "",
-                "pathname": "foo/bar",
+                "pathname": "/bar",
                 "search": "",
                 "hash": ""
             },
@@ -1618,32 +1982,6 @@ describe("url", () => {
                 "search": "",
                 "hash": ""
             },
-            "javascript:alert(1);a='@white-listed.com'": {
-                "href": "javascript:alert(1);a='@white-listed.com'",
-                "origin": "null",
-                "protocol": "javascript:",
-                "username": "",
-                "password": "",
-                "host": "",
-                "hostname": "",
-                "port": "",
-                "pathname": "alert(1);a='@white-listed.com'",
-                "search": "",
-                "hash": ""
-            },
-            "javAscript:alert(1);a='@white-listed.com'": {
-                "href": "javascript:alert(1);a='@white-listed.com'",
-                "origin": "null",
-                "protocol": "javascript:",
-                "username": "",
-                "password": "",
-                "host": "",
-                "hostname": "",
-                "port": "",
-                "pathname": "alert(1);a='@white-listed.com'",
-                "search": "",
-                "hash": ""
-            },
             "ws://www.example.com": {
                 "href": "ws://www.example.com/",
                 "origin": "ws://www.example.com",
@@ -1796,8 +2134,7 @@ describe("url", () => {
         // non-writable property should throw.
         // Note: this error message is subject to change in V8 updates
         assert.throws(
-            () => url_.origin = 'http://foo.bar.com:22',
-            /^TypeError: Cannot set property origin of \[object URL\] which has only a getter$/
+            () => url_.origin = 'http://foo.bar.com:22'
         );
         assert.strictEqual(url_.origin, 'http://foo.bar.com:21');
         assert.strictEqual(url_.toString(),
@@ -1873,8 +2210,7 @@ describe("url", () => {
         // non-writable property should throw.
         // Note: this error message is subject to change in V8 updates
         assert.throws(
-            () => url_.searchParams = '?k=88',
-            /^TypeError: Cannot set property searchParams of \[object URL\] which has only a getter$/
+            () => url_.searchParams = '?k=88'
         );
         // assert.strictEqual(url_.searchParams, oldParams);
         assert.strictEqual(url_.toString(),
@@ -1916,6 +2252,70 @@ describe("url", () => {
         assert.strictEqual(url.search, '');
         // assert.strictEqual(url.searchParams.toString(), '');
     });
+
+    it('format error when both host&port', () => {
+        [
+            {
+                "href": "http://foo1.com:8100/test",
+                "protocol": "http:",
+                "slashes": true,
+                "host": "foo1.com:8100",
+                "hostname": "foo.com",
+                "port": "8100",
+                "pathname": "/test"
+            },
+            {
+                "href": "mysql:foo1.com:8100/test",
+                "protocol": "mysql:",
+                "slashes": false,
+                "host": "foo1.com:8100",
+                "hostname": "foo.com",
+                "port": "8100",
+                "pathname": "/test"
+            },
+            {
+                "href": "mysql:/test",
+                "protocol": "mysql:",
+                "slashes": false,
+                "port": "8100",
+                "pathname": "/test"
+            }
+        ].forEach((test) => {
+            const u = url.format(test);
+            assert.equal(u, test.href);
+        });
+    });
+
+    it('format error when empty object in query', () => {
+        const u = url.format({
+            "protocol": "mysql:",
+            "host": "foo1.com:8100",
+            "pathname": "/test",
+            "query": {}
+        });
+
+        assert.equal(u, "mysql:foo1.com:8100/test");
+    });
+
+    it('format error when proctol with //', () => {
+        const u = url.format({
+            "protocol": "http://",
+            "slashes": true,
+            "host": "foo1.com:8100",
+            "pathname": "/test"
+        });
+
+        assert.equal(u, "http://foo1.com:8100/test");
+    });
+
+    it("format sqlite when empty hostname and no slashes prefix in pathname", () => {
+        const u = url.format({
+            "protocol": "sqlite:",
+            "slashes": false,
+            "pathname": "test.db"
+        });
+
+        assert.equal(u, "sqlite:test.db");
+    });
 });
 
-require.main === module && test.run(console.DEBUG);

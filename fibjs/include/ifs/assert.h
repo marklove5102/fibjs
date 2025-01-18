@@ -15,13 +15,15 @@
 
 namespace fibjs {
 
+class assert_strict_base;
+
 class assert_base : public object_base {
     DECLARE_CLASS(assert_base);
 
 public:
     // assert_base
+    static result_t get_AssertionError(v8::Local<v8::Function>& retVal);
     static result_t _function(v8::Local<v8::Value> actual, exlib::string msg);
-    static result_t ok(v8::Local<v8::Value> actual, exlib::string msg);
     static result_t notOk(v8::Local<v8::Value> actual, exlib::string msg);
     static result_t equal(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
     static result_t notEqual(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
@@ -29,6 +31,10 @@ public:
     static result_t notStrictEqual(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
     static result_t deepEqual(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
     static result_t notDeepEqual(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
+    static result_t deepStrictEqual(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
+    static result_t notDeepStrictEqual(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
+    static result_t match(exlib::string actual, v8::Local<v8::RegExp> expected, exlib::string msg);
+    static result_t doesNotMatch(exlib::string actual, v8::Local<v8::RegExp> expected, exlib::string msg);
     static result_t closeTo(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, v8::Local<v8::Value> delta, exlib::string msg);
     static result_t notCloseTo(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, v8::Local<v8::Value> delta, exlib::string msg);
     static result_t lessThan(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
@@ -68,7 +74,12 @@ public:
     static result_t deepPropertyVal(v8::Local<v8::Value> object, v8::Local<v8::Value> prop, v8::Local<v8::Value> value, exlib::string msg);
     static result_t deepPropertyNotVal(v8::Local<v8::Value> object, v8::Local<v8::Value> prop, v8::Local<v8::Value> value, exlib::string msg);
     static result_t throws(v8::Local<v8::Function> block, exlib::string msg);
+    static result_t throws(v8::Local<v8::Function> block, v8::Local<v8::Value> error, exlib::string msg);
     static result_t doesNotThrow(v8::Local<v8::Function> block, exlib::string msg);
+    static result_t rejects(v8::Local<v8::Function> block, exlib::string msg, v8::Local<v8::Promise>& retVal);
+    static result_t rejects(v8::Local<v8::Function> block, v8::Local<v8::Value> error, exlib::string msg, v8::Local<v8::Promise>& retVal);
+    static result_t rejects(v8::Local<v8::Promise> result, exlib::string msg, v8::Local<v8::Promise>& retVal);
+    static result_t rejects(v8::Local<v8::Promise> result, v8::Local<v8::Value> error, exlib::string msg, v8::Local<v8::Promise>& retVal);
     static result_t ifError(v8::Local<v8::Value> object);
 
 public:
@@ -78,8 +89,8 @@ public:
     }
 
 public:
+    static void s_static_get_AssertionError(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s__function(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static void s_static_ok(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_notOk(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_equal(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_notEqual(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -87,6 +98,10 @@ public:
     static void s_static_notStrictEqual(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_deepEqual(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_notDeepEqual(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_deepStrictEqual(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_notDeepStrictEqual(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_match(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_doesNotMatch(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_closeTo(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_notCloseTo(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_lessThan(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -127,15 +142,17 @@ public:
     static void s_static_deepPropertyNotVal(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_throws(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_doesNotThrow(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_rejects(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_ifError(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 }
+
+#include "ifs/assert_strict.h"
 
 namespace fibjs {
 inline ClassInfo& assert_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
-        { "ok", s_static_ok, true, ClassData::ASYNC_SYNC },
         { "notOk", s_static_notOk, true, ClassData::ASYNC_SYNC },
         { "equal", s_static_equal, true, ClassData::ASYNC_SYNC },
         { "notEqual", s_static_notEqual, true, ClassData::ASYNC_SYNC },
@@ -143,6 +160,10 @@ inline ClassInfo& assert_base::class_info()
         { "notStrictEqual", s_static_notStrictEqual, true, ClassData::ASYNC_SYNC },
         { "deepEqual", s_static_deepEqual, true, ClassData::ASYNC_SYNC },
         { "notDeepEqual", s_static_notDeepEqual, true, ClassData::ASYNC_SYNC },
+        { "deepStrictEqual", s_static_deepStrictEqual, true, ClassData::ASYNC_SYNC },
+        { "notDeepStrictEqual", s_static_notDeepStrictEqual, true, ClassData::ASYNC_SYNC },
+        { "match", s_static_match, true, ClassData::ASYNC_SYNC },
+        { "doesNotMatch", s_static_doesNotMatch, true, ClassData::ASYNC_SYNC },
         { "closeTo", s_static_closeTo, true, ClassData::ASYNC_SYNC },
         { "notCloseTo", s_static_notCloseTo, true, ClassData::ASYNC_SYNC },
         { "lessThan", s_static_lessThan, true, ClassData::ASYNC_SYNC },
@@ -183,18 +204,41 @@ inline ClassInfo& assert_base::class_info()
         { "deepPropertyNotVal", s_static_deepPropertyNotVal, true, ClassData::ASYNC_SYNC },
         { "throws", s_static_throws, true, ClassData::ASYNC_SYNC },
         { "doesNotThrow", s_static_doesNotThrow, true, ClassData::ASYNC_SYNC },
+        { "rejects", s_static_rejects, true, ClassData::ASYNC_SYNC },
         { "ifError", s_static_ifError, true, ClassData::ASYNC_SYNC }
+    };
+
+    static ClassData::ClassObject s_object[] = {
+        { "ok", assert_base::class_info },
+        { "strict", assert_strict_base::class_info }
+    };
+
+    static ClassData::ClassProperty s_property[] = {
+        { "AssertionError", s_static_get_AssertionError, block_set, true }
     };
 
     static ClassData s_cd = {
         "assert", true, s__new, s__function,
-        ARRAYSIZE(s_method), s_method, 0, NULL, 0, NULL, 0, NULL, NULL, NULL,
+        ARRAYSIZE(s_method), s_method, ARRAYSIZE(s_object), s_object, ARRAYSIZE(s_property), s_property, 0, NULL, NULL, NULL,
         &object_base::class_info(),
         false
     };
 
     static ClassInfo s_ci(s_cd);
     return s_ci;
+}
+
+inline void assert_base::s_static_get_AssertionError(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    v8::Local<v8::Function> vr;
+
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = get_AssertionError(vr);
+
+    METHOD_RETURN();
 }
 
 inline void assert_base::s__function(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -207,20 +251,6 @@ inline void assert_base::s__function(const v8::FunctionCallbackInfo<v8::Value>& 
     OPT_ARG(exlib::string, 1, "");
 
     hr = _function(v0, v1);
-
-    METHOD_VOID();
-}
-
-inline void assert_base::s_static_ok(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    METHOD_ENTER();
-
-    METHOD_OVER(2, 1);
-
-    ARG(v8::Local<v8::Value>, 0);
-    OPT_ARG(exlib::string, 1, "");
-
-    hr = ok(v0, v1);
 
     METHOD_VOID();
 }
@@ -325,6 +355,66 @@ inline void assert_base::s_static_notDeepEqual(const v8::FunctionCallbackInfo<v8
     OPT_ARG(exlib::string, 2, "");
 
     hr = notDeepEqual(v0, v1, v2);
+
+    METHOD_VOID();
+}
+
+inline void assert_base::s_static_deepStrictEqual(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_ENTER();
+
+    METHOD_OVER(3, 2);
+
+    ARG(v8::Local<v8::Value>, 0);
+    ARG(v8::Local<v8::Value>, 1);
+    OPT_ARG(exlib::string, 2, "");
+
+    hr = deepStrictEqual(v0, v1, v2);
+
+    METHOD_VOID();
+}
+
+inline void assert_base::s_static_notDeepStrictEqual(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_ENTER();
+
+    METHOD_OVER(3, 2);
+
+    ARG(v8::Local<v8::Value>, 0);
+    ARG(v8::Local<v8::Value>, 1);
+    OPT_ARG(exlib::string, 2, "");
+
+    hr = notDeepStrictEqual(v0, v1, v2);
+
+    METHOD_VOID();
+}
+
+inline void assert_base::s_static_match(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_ENTER();
+
+    METHOD_OVER(3, 2);
+
+    ARG(exlib::string, 0);
+    ARG(v8::Local<v8::RegExp>, 1);
+    OPT_ARG(exlib::string, 2, "");
+
+    hr = match(v0, v1, v2);
+
+    METHOD_VOID();
+}
+
+inline void assert_base::s_static_doesNotMatch(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_ENTER();
+
+    METHOD_OVER(3, 2);
+
+    ARG(exlib::string, 0);
+    ARG(v8::Local<v8::RegExp>, 1);
+    OPT_ARG(exlib::string, 2, "");
+
+    hr = doesNotMatch(v0, v1, v2);
 
     METHOD_VOID();
 }
@@ -894,6 +984,14 @@ inline void assert_base::s_static_throws(const v8::FunctionCallbackInfo<v8::Valu
 
     hr = throws(v0, v1);
 
+    METHOD_OVER(3, 2);
+
+    ARG(v8::Local<v8::Function>, 0);
+    ARG(v8::Local<v8::Value>, 1);
+    OPT_ARG(exlib::string, 2, "");
+
+    hr = throws(v0, v1, v2);
+
     METHOD_VOID();
 }
 
@@ -909,6 +1007,45 @@ inline void assert_base::s_static_doesNotThrow(const v8::FunctionCallbackInfo<v8
     hr = doesNotThrow(v0, v1);
 
     METHOD_VOID();
+}
+
+inline void assert_base::s_static_rejects(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    v8::Local<v8::Promise> vr;
+
+    METHOD_ENTER();
+
+    METHOD_OVER(2, 1);
+
+    ARG(v8::Local<v8::Function>, 0);
+    OPT_ARG(exlib::string, 1, "");
+
+    hr = rejects(v0, v1, vr);
+
+    METHOD_OVER(3, 2);
+
+    ARG(v8::Local<v8::Function>, 0);
+    ARG(v8::Local<v8::Value>, 1);
+    OPT_ARG(exlib::string, 2, "");
+
+    hr = rejects(v0, v1, v2, vr);
+
+    METHOD_OVER(2, 1);
+
+    ARG(v8::Local<v8::Promise>, 0);
+    OPT_ARG(exlib::string, 1, "");
+
+    hr = rejects(v0, v1, vr);
+
+    METHOD_OVER(3, 2);
+
+    ARG(v8::Local<v8::Promise>, 0);
+    ARG(v8::Local<v8::Value>, 1);
+    OPT_ARG(exlib::string, 2, "");
+
+    hr = rejects(v0, v1, v2, vr);
+
+    METHOD_RETURN();
 }
 
 inline void assert_base::s_static_ifError(const v8::FunctionCallbackInfo<v8::Value>& args)
