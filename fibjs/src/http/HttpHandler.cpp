@@ -647,7 +647,7 @@ result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             m_body.Release();
 
             m_req->clear();
-            return m_req->readFrom(m_stmBuffered, next(invoke));
+            return m_req->readFrom(m_stmBuffered, v8::Local<v8::Object>(), next(invoke));
         }
 
         ON_STATE(asyncInvoke, invoke)
@@ -701,6 +701,11 @@ result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             date_t d;
             exlib::string str;
 
+            bool sent = false;
+            m_rep->get_sent(sent);
+            if (sent)
+                return next(end);
+
             if (m_rep->firstHeader("Server", str) == CALL_RETURN_NULL)
                 m_rep->addHeader("Server", m_pThis->m_serverName);
 
@@ -720,7 +725,8 @@ result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
 
             if (headOnly) {
                 m_rep->set_keepAlive(false);
-                return m_rep->sendHeader(m_stm, next(end));
+
+                return m_rep.As<HttpResponse>()->sendHeader(m_stm, next(end));
             }
 
             int64_t len;
@@ -770,13 +776,13 @@ result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
                 }
             }
 
-            return m_rep->sendTo(m_stm, next(end));
+            return m_rep->sendTo(m_stm, v8::Local<v8::Object>(), next(end));
         }
 
         ON_STATE(asyncInvoke, zip)
         {
             m_rep->set_body(m_zip);
-            return m_rep->sendTo(m_stm, next(end));
+            return m_rep->sendTo(m_stm, v8::Local<v8::Object>(), next(end));
         }
 
         ON_STATE(asyncInvoke, end)

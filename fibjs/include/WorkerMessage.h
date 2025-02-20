@@ -21,6 +21,7 @@ public:
 
 public:
     // Message_base
+    virtual result_t get_sent(bool& retVal);
     virtual result_t get_value(exlib::string& retVal);
     virtual result_t set_value(exlib::string newVal);
     virtual result_t get_params(obj_ptr<NArray>& retVal);
@@ -40,8 +41,8 @@ public:
     virtual result_t end();
     virtual result_t isEnded(bool& retVal);
     virtual result_t clear();
-    virtual result_t sendTo(Stream_base* stm, AsyncEvent* ac);
-    virtual result_t readFrom(Stream_base* stm, AsyncEvent* ac);
+    virtual result_t sendTo(Stream_base* stm, v8::Local<v8::Object> options, AsyncEvent* ac);
+    virtual result_t readFrom(Stream_base* stm, v8::Local<v8::Object> options, AsyncEvent* ac);
     virtual result_t get_stream(obj_ptr<Stream_base>& retVal);
     virtual result_t get_lastError(exlib::string& retVal);
     virtual result_t set_lastError(exlib::string newVal);

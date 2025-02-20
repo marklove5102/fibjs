@@ -24,6 +24,7 @@ public:
         , m_maxBodySize(64)
         , m_contentLength(-1)
         , m_bChunked(false)
+        , m_sent(false)
     {
         m_headers = new HttpCollection();
         clear();
@@ -31,6 +32,7 @@ public:
 
 public:
     // Message_base
+    virtual result_t get_sent(bool& retVal);
     virtual result_t get_data(v8::Local<v8::Value>& retVal);
     virtual result_t json(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal);
     virtual result_t json(v8::Local<v8::Value>& retVal);
@@ -71,7 +73,7 @@ public:
 public:
     result_t send(Stream_base* stm, exlib::string& strCommand,
         AsyncEvent* ac);
-    result_t sendHeader(Stream_base* stm, exlib::string& strCommand,
+    result_t sendHeader(Stream_base* stm, exlib::string& strCommand, bool content_length,
         AsyncEvent* ac);
     result_t readFrom(Stream_base* stm, AsyncEvent* ac);
     result_t readHeader(Stream_base* stm, AsyncEvent* ac);
@@ -81,8 +83,7 @@ public:
     void addHeader(const char* name, int32_t szName, const char* value,
         int32_t szValue);
     result_t addHeader(exlib::string& strLine);
-    size_t size();
-    size_t getData(char* buf, size_t sz);
+    size_t getData(char* buf, size_t sz, bool content_length);
 
     result_t allHeader(exlib::string name, obj_ptr<NArray>& retVal)
     {
@@ -107,6 +108,7 @@ public:
 
     int64_t m_contentLength;
     bool m_bChunked;
+    bool m_sent;
 };
 
 } /* namespace fibjs */

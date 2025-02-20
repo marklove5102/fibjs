@@ -10,6 +10,11 @@
 
 namespace fibjs {
 
+result_t WorkerMessage::get_sent(bool& retVal)
+{
+    return m_message->get_sent(retVal);
+}
+
 result_t WorkerMessage::get_value(exlib::string& retVal)
 {
     return m_message->get_value(retVal);
@@ -123,14 +128,14 @@ result_t WorkerMessage::get_data(v8::Local<v8::Value>& retVal)
     return 0;
 }
 
-result_t WorkerMessage::sendTo(Stream_base* stm, AsyncEvent* ac)
+result_t WorkerMessage::sendTo(Stream_base* stm, v8::Local<v8::Object> options, AsyncEvent* ac)
 {
-    return m_message->sendTo(stm, ac);
+    return m_message->sendTo(stm, options, ac);
 }
 
-result_t WorkerMessage::readFrom(Stream_base* stm, AsyncEvent* ac)
+result_t WorkerMessage::readFrom(Stream_base* stm, v8::Local<v8::Object> options, AsyncEvent* ac)
 {
-    return m_message->readFrom(stm, ac);
+    return m_message->readFrom(stm, options, ac);
 }
 
 } /* namespace fibjs */

@@ -1037,9 +1037,25 @@ describe("http", () => {
             var rep = new http.Response();
             rep.write("0123456789");
 
-            rep.sendHeader(ms);
+            rep.sendTo(ms, {
+                header_only: true
+            });
             ms.rewind();
             assert.equal(ms.read(), 'HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 10\r\n\r\n');
+        });
+
+        it("response without content-length", () => {
+            var ms = new io.MemoryStream();
+
+            var rep = new http.Response();
+            rep.write("0123456789");
+
+            rep.sendTo(ms, {
+                header_only: true,
+                content_length: false
+            });
+            ms.rewind();
+            assert.equal(ms.read(), 'HTTP/1.1 200 OK\r\nConnection: keep-alive\r\n\r\n');
         });
 
         it("statusCode", () => {
@@ -1174,6 +1190,8 @@ describe("http", () => {
                     r.response.write("01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567");
                 } else if (r.value == '/gzip_bin') {
                     r.response.write("0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789");
+                } else if (r.value == '/custum_send') {
+                    r.response.sendTo(r.stream);
                 }
             });
 
@@ -1314,6 +1332,13 @@ describe("http", () => {
             var req = get_response();
             assert.equal(req.statusCode, 200);
             assert.equal(req.firstHeader('Cache-Control'), 'no-cache, no-store');
+        });
+
+        it("custom send", () => {
+            c.write("GET /custum_send HTTP/1.0\r\n\r\n");
+            var req = get_response();
+            assert.equal(req.statusCode, 200);
+            assert.equal(req.length, 0);
         });
     });
 
