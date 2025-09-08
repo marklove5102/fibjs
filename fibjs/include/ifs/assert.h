@@ -24,6 +24,7 @@ public:
     // assert_base
     static result_t get_AssertionError(v8::Local<v8::Function>& retVal);
     static result_t _function(v8::Local<v8::Value> actual, exlib::string msg);
+    static result_t fail(exlib::string msg);
     static result_t notOk(v8::Local<v8::Value> actual, exlib::string msg);
     static result_t equal(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
     static result_t notEqual(v8::Local<v8::Value> actual, v8::Local<v8::Value> expected, exlib::string msg);
@@ -91,6 +92,7 @@ public:
 public:
     static void s_static_get_AssertionError(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s__function(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_fail(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_notOk(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_equal(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_notEqual(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -153,6 +155,7 @@ namespace fibjs {
 inline ClassInfo& assert_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
+        { "fail", s_static_fail, true, ClassData::ASYNC_SYNC },
         { "notOk", s_static_notOk, true, ClassData::ASYNC_SYNC },
         { "equal", s_static_equal, true, ClassData::ASYNC_SYNC },
         { "notEqual", s_static_notEqual, true, ClassData::ASYNC_SYNC },
@@ -251,6 +254,19 @@ inline void assert_base::s__function(const v8::FunctionCallbackInfo<v8::Value>& 
     OPT_ARG(exlib::string, 1, "");
 
     hr = _function(v0, v1);
+
+    METHOD_VOID();
+}
+
+inline void assert_base::s_static_fail(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 0);
+
+    OPT_ARG(exlib::string, 0, "");
+
+    hr = fail(v0);
 
     METHOD_VOID();
 }

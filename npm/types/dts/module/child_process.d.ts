@@ -113,7 +113,7 @@ declare module 'child_process' {
      */
     function exec(command: string, options?: FIBJS.GeneralObject): [stdout: any, stderr: any, exitCode: number];
 
-    function exec(command: string, options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: [stdout: any, stderr: any, exitCode: number])=>any): void;
+    function exec(command: string, options?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: [stdout: any, stderr: any, exitCode: number])=>any): void;
 
     /**
      * @description 直接执行所指定的文件并缓冲输出，当以回调方式执行时，函数将返回子进程对象
@@ -138,7 +138,7 @@ declare module 'child_process' {
      */
     function execFile(command: string, args: any[], options?: FIBJS.GeneralObject): [stdout: any, stderr: any, exitCode: number];
 
-    function execFile(command: string, args: any[], options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: [stdout: any, stderr: any, exitCode: number])=>any): void;
+    function execFile(command: string, args: any[], options?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: [stdout: any, stderr: any, exitCode: number])=>any): void;
 
     /**
      * @description 直接执行所指定的文件并缓冲输出，当以回调方式执行时，函数将返回子进程对象
@@ -162,7 +162,7 @@ declare module 'child_process' {
      */
     function execFile(command: string, options?: FIBJS.GeneralObject): [stdout: any, stderr: any, exitCode: number];
 
-    function execFile(command: string, options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: [stdout: any, stderr: any, exitCode: number])=>any): void;
+    function execFile(command: string, options?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: [stdout: any, stderr: any, exitCode: number])=>any): void;
 
     /**
      * @description 用给定的命令发布一个子进程
@@ -185,9 +185,7 @@ declare module 'child_process' {
      *      @return 返回子进程运行结果
      *      
      */
-    function spawnSync(command: string, args: any[], options?: FIBJS.GeneralObject): [pid: number, output: [object Object], stdout: any, stderr: any, status: number, error: any];
-
-    function spawnSync(command: string, args: any[], options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: [pid: number, output: [object Object], stdout: any, stderr: any, status: number, error: any])=>any): void;
+    function spawnSync(command: string, args: any[], options?: FIBJS.GeneralObject): [pid: number, output: NArray, stdout: any, stderr: any, status: number, error: any];
 
     /**
      * @description 用给定的命令发布一个子进程
@@ -209,9 +207,74 @@ declare module 'child_process' {
      *      @return 返回子进程运行结果
      *      
      */
-    function spawnSync(command: string, options?: FIBJS.GeneralObject): [pid: number, output: [object Object], stdout: any, stderr: any, status: number, error: any];
+    function spawnSync(command: string, options?: FIBJS.GeneralObject): [pid: number, output: NArray, stdout: any, stderr: any, status: number, error: any];
 
-    function spawnSync(command: string, options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: [pid: number, output: [object Object], stdout: any, stderr: any, status: number, error: any])=>any): void;
+    /**
+     * @description 在 shell 中同步执行一个命令并缓冲输出
+     *     options 支持的内容如下：
+     *      ```JavaScript
+     *      {
+     *         "cwd": "", // working directory of the child process, default to current directory
+     *         "env": {}, // key-value pairs of environment variables to add to the child's environment
+     *         "encoding": "utf8", // specify the character encoding used to decode the stdout and stderr output
+     *         "detached": false, // child process will be a leader of a new process group, default to false
+     *         "uid": 0, // configure the user identity of the process
+     *         "gid": 0, // configure the group identity of the process
+     *         "windowsVerbatimArguments": false, // do not execute any quote or escape processing on Windows. Ignored on Unix. When specified, the command line string is passed directly to the underlying operating system shell without any processing whatsoever. This is set to true automatically when the shell option is specified and is CMD.
+     *         "windowsHide": false // hide the subprocess console window that would normally be created on Windows systems. This option has no effect on non-Windows systems.
+     *      }
+     *      ```
+     *      @param command 指定要运行的命令
+     *      @param options 指定创建参数
+     *      @return 返回子进程的 stdout 输出内容
+     *      
+     */
+    function execSync(command: string, options?: FIBJS.GeneralObject): any;
+
+    /**
+     * @description 直接同步执行所指定的文件并缓冲输出
+     *     options 支持的内容如下：
+     *      ```JavaScript
+     *      {
+     *         "cwd": "", // working directory of the child process, default to current directory
+     *         "env": {}, // key-value pairs of environment variables to add to the child's environment
+     *         "encoding": "utf8", // specify the character encoding used to decode the stdout and stderr output
+     *         "detached": false, // child process will be a leader of a new process group, default to false
+     *         "uid": 0, // configure the user identity of the process
+     *         "gid": 0, // configure the group identity of the process
+     *         "windowsVerbatimArguments": false, // do not execute any quote or escape processing on Windows. Ignored on Unix. When specified, the command line string is passed directly to the underlying operating system shell without any processing whatsoever. This is set to true automatically when the shell option is specified and is CMD.
+     *         "windowsHide": false // hide the subprocess console window that would normally be created on Windows systems. This option has no effect on non-Windows systems.
+     *      }
+     *      ```
+     *      @param command 指定要运行的命令
+     *      @param args 指定字符串参数列表
+     *      @param options 指定创建参数
+     *      @return 返回子进程的 stdout 输出内容
+     *      
+     */
+    function execFileSync(command: string, args: any[], options?: FIBJS.GeneralObject): any;
+
+    /**
+     * @description 直接同步执行所指定的文件并缓冲输出
+     *     options 支持的内容如下：
+     *      ```JavaScript
+     *      {
+     *         "cwd": "", // working directory of the child process, default to current directory
+     *         "env": {}, // key-value pairs of environment variables to add to the child's environment
+     *         "encoding": "utf8", // specify the character encoding used to decode the stdout and stderr output
+     *         "detached": false, // child process will be a leader of a new process group, default to false
+     *         "uid": 0, // configure the user identity of the process
+     *         "gid": 0, // configure the group identity of the process
+     *         "windowsVerbatimArguments": false, // do not execute any quote or escape processing on Windows. Ignored on Unix. When specified, the command line string is passed directly to the underlying operating system shell without any processing whatsoever. This is set to true automatically when the shell option is specified and is CMD.
+     *         "windowsHide": false // hide the subprocess console window that would normally be created on Windows systems. This option has no effect on non-Windows systems.
+     *      }
+     *      ```
+     *      @param command 指定要运行的命令
+     *      @param options 指定创建参数
+     *      @return 返回子进程的 stdout 输出内容
+     *      
+     */
+    function execFileSync(command: string, options?: FIBJS.GeneralObject): any;
 
     /**
      * @description 在子进程中执行一个模块
@@ -280,7 +343,7 @@ declare module 'child_process' {
      */
     function run(command: string, args: any[], options?: FIBJS.GeneralObject): number;
 
-    function run(command: string, args: any[], options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: number)=>any): void;
+    function run(command: string, args: any[], options?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: number)=>any): void;
 
     /**
      * @description 直接执行所指定的文件并返回 exitCode，当以回调方式执行时，函数将返回子进程对象
@@ -303,7 +366,7 @@ declare module 'child_process' {
      */
     function run(command: string, options?: FIBJS.GeneralObject): number;
 
-    function run(command: string, options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: number)=>any): void;
+    function run(command: string, options?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: number)=>any): void;
 
     /**
      * @description 用字符串模版语法在 shell 中执行一个命令并缓冲输出
@@ -344,6 +407,54 @@ declare module 'child_process' {
      *     
      */
     function sh(strings: any[], ...args: any[]): string;
+
+    /**
+     * @description 创建一个 ssh 执行函数
+     * 
+     *     options 支持的内容如下：
+     *      ```JavaScript
+     *      {
+     *          "user": "", // ssh user
+     *          "port": 22, // ssh port
+     *      }
+     *      ```
+     * 
+     *      ssh 是对 execFile 方法的再次封装，用于快速执行 ssh shell 命令，支持字符串模版语法，例如：
+     *      ```JavaScript
+     *        const $ = require("child_process").ssh('remote');
+     *        var ret = $`ls -l`;
+     *        console.log(ret);
+     *       ```
+     *       因为 sh 是个模版函数，所以可以很方便地在命令中使用模版，例如：
+     *       ```JavaScript
+     *        const $ = require("child_process").ssh('remote');
+     *        var ret = $`ls -l ${__dirname}`;
+     *        console.log(ret);
+     *       ```
+     *       你也可以很方便地在命令中引入数组，例如：
+     *       ```JavaScript
+     *        const $ = require("child_process").ssh('remote');
+     *        const words = [
+     *          "hello",
+     *          "world"
+     *        ]
+     *        var ret = $`echo ${words}`;
+     *        console.log(ret);
+     *       ```
+     *       sh 会自动删除命令返回的最后一个换行，以方便在下一次命令中使用，例如：
+     *       ```JavaScript
+     *        const $ = require("child_process").ssh('remote');
+     *        var world = $`echo world`;
+     *        var ret = $`echo hello ${world}`;
+     *        console.log(ret);
+     *       ```
+     * 
+     *     @param host 指定远程主机地址
+     *     @param options 指定 ssh 连接参数
+     *     @return 返回子进程对象
+     *    
+     */
+    function ssh(host: string, options?: FIBJS.GeneralObject): (...args: any[])=>any;
 
 }
 

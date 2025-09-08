@@ -8,7 +8,9 @@
 #include "object.h"
 #include "HttpRequest.h"
 #include "parse.h"
-#include "HttpUploadCollection.h"
+#include "HttpCollection.h"
+#include "FormData.h"
+#include "URLSearchParams.h"
 
 namespace fibjs {
 
@@ -28,7 +30,7 @@ result_t HttpRequest::set_protocol(exlib::string newVal)
     return m_message->set_protocol(newVal);
 }
 
-result_t HttpRequest::get_headers(obj_ptr<HttpCollection_base>& retVal)
+result_t HttpRequest::get_headers(obj_ptr<Headers_base>& retVal)
 {
     return m_message->get_headers(retVal);
 }
@@ -54,9 +56,19 @@ result_t HttpRequest::readAll(obj_ptr<Buffer_base>& retVal, AsyncEvent* ac)
     return m_message->readAll(retVal, ac);
 }
 
-result_t HttpRequest::write(Buffer_base* data, AsyncEvent* ac)
+result_t HttpRequest::write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac)
 {
-    return m_message->write(data, ac);
+    return m_message->write(data, retVal, ac);
+}
+
+result_t HttpRequest::text(exlib::string data, exlib::string& retVal)
+{
+    return m_message->text(data, retVal);
+}
+
+result_t HttpRequest::text(exlib::string& retVal)
+{
+    return m_message->text(retVal);
 }
 
 result_t HttpRequest::json(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal)
@@ -164,19 +176,19 @@ result_t HttpRequest::allHeader(exlib::string name, obj_ptr<NObject>& retVal)
     return m_message->allHeader(name, retVal);
 }
 
-result_t HttpRequest::addHeader(v8::Local<v8::Object> map)
+result_t HttpRequest::appendHeader(v8::Local<v8::Object> map)
 {
-    return m_message->addHeader(map);
+    return m_message->appendHeader(map);
 }
 
-result_t HttpRequest::addHeader(exlib::string name, exlib::string value)
+result_t HttpRequest::appendHeader(exlib::string name, exlib::string value)
 {
-    return m_message->addHeader(name, value);
+    return m_message->appendHeader(name, value);
 }
 
-result_t HttpRequest::addHeader(exlib::string name, v8::Local<v8::Array> values)
+result_t HttpRequest::appendHeader(exlib::string name, v8::Local<v8::Array> values)
 {
-    return m_message->addHeader(name, values);
+    return m_message->appendHeader(name, values);
 }
 
 result_t HttpRequest::setHeader(v8::Local<v8::Object> map)
@@ -442,14 +454,14 @@ result_t HttpRequest::get_cookies(obj_ptr<HttpCollection_base>& retVal)
     return 0;
 }
 
-result_t HttpRequest::get_form(obj_ptr<HttpCollection_base>& retVal)
+result_t HttpRequest::get_form(obj_ptr<FormData_base>& retVal)
 {
     if (m_form == NULL) {
         int64_t len = 0;
 
         get_length(len);
         if (len == 0)
-            m_form = new HttpCollection();
+            m_form = new FormData();
         else {
             exlib::string strType;
             bool bUpload = false;
@@ -472,15 +484,15 @@ result_t HttpRequest::get_form(obj_ptr<HttpCollection_base>& retVal)
             if (hr < 0)
                 return hr;
 
-            exlib::string strForm;
-            buf->toString(strForm);
-
             if (bUpload) {
-                obj_ptr<HttpUploadCollection> col = new HttpUploadCollection();
-                col->parse(strForm, strType.c_str());
+                obj_ptr<FormData> col = new FormData();
+                col->parseMultipart(buf, strType.c_str());
                 m_form = col;
             } else {
-                obj_ptr<HttpCollection> c = new HttpCollection();
+                exlib::string strForm;
+                buf->toString(strForm);
+
+                obj_ptr<FormData> c = new FormData();
                 c->parse(strForm);
                 m_form = c;
             }
@@ -492,10 +504,10 @@ result_t HttpRequest::get_form(obj_ptr<HttpCollection_base>& retVal)
     return 0;
 }
 
-result_t HttpRequest::get_query(obj_ptr<HttpCollection_base>& retVal)
+result_t HttpRequest::get_query(obj_ptr<URLSearchParams_base>& retVal)
 {
     if (m_query == NULL) {
-        obj_ptr<HttpCollection> c = new HttpCollection();
+        obj_ptr<URLSearchParams> c = new URLSearchParams();
         c->parse(m_queryString);
         m_query = c;
     }

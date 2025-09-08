@@ -8,11 +8,12 @@
 #pragma once
 
 #include "utils.h"
+#include "options.h"
 #include "TextColor.h"
 #include "ifs/console.h"
 #include "ifs/coroutine.h"
 #include "ifs/fs.h"
-#include "File.h"
+#include "FileStream.h"
 
 namespace fibjs {
 
@@ -161,13 +162,21 @@ public:
     {
         item* i = new item(priority, msg);
 
-        m_lock.lock();
-        m_acLog.putTail(i);
-        if (!m_bWorking) {
-            m_bWorking = true;
-            async(CALL_E_NOSYNC);
+        if (g_sync_console) {
+            m_lock.lock();
+            m_acLog.putTail(i);
+            m_lock.unlock();
+
+            post(0);
+        } else {
+            m_lock.lock();
+            m_acLog.putTail(i);
+            if (!m_bWorking) {
+                m_bWorking = true;
+                async(CALL_E_NOSYNC);
+            }
+            m_lock.unlock();
         }
-        m_lock.unlock();
     }
 
     void log(int32_t priority, exlib::string& msg)
@@ -264,7 +273,7 @@ private:
     int64_t m_split_size;
     int32_t m_count;
 
-    obj_ptr<File> m_file;
+    obj_ptr<FileStream> m_file;
     int64_t m_size;
     date_t m_date;
 };

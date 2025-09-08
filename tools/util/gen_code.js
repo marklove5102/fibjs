@@ -9,9 +9,120 @@ var path = require('path');
  * @param {string} baseFolder 
  */
 module.exports = function (defs, baseFolder) {
-    for (var cls in defs)
-        if (!defs[cls].__skip)
-            gen_code(cls, defs[cls], baseFolder);
+    const totalClasses = Object.keys(defs).filter(cls => !defs[cls].__skip).length;
+
+    console.log(`   📋 Generating C++ code for ${totalClasses} classes...`);
+
+    // Multi-round processing to ensure parent classes are processed before children
+    const processed = new Set();
+    const allClasses = Object.keys(defs).filter(cls => !defs[cls].__skip);
+
+    let round = 1;
+    while (processed.size < allClasses.length) {
+        const initialSize = processed.size;
+
+        for (var cls of allClasses) {
+            if (processed.has(cls)) continue;
+
+            const def = defs[cls];
+            const parentClass = def.declare.extend;
+
+            // Process if no parent or parent already processed
+            if (!parentClass || parentClass === 'object' || processed.has(parentClass)) {
+                // First do union_method for this class
+                union_method_for_class(def, defs);
+
+                // Then generate the code
+                gen_code(cls, def, baseFolder, defs);
+                processed.add(cls);
+            }
+        }
+
+        // If no progress in this round, break to avoid infinite loop
+        if (processed.size === initialSize) {
+            console.warn(`⚠️  Warning: Some classes couldn't be processed due to circular dependencies or missing parents`);
+            // Process remaining classes anyway
+            for (var cls of allClasses) {
+                if (!processed.has(cls)) {
+                    const def = defs[cls];
+                    union_method_for_class(def, defs);
+                    gen_code(cls, def, baseFolder, defs);
+                    processed.add(cls);
+                }
+            }
+            break;
+        }
+
+        round++;
+    }
+
+    console.log(`   ✅ Completed processing in ${round - 1} rounds`);
+}
+
+/**
+ * Process union_method for a single class definition
+ * @param {import('../../idl/ir').IIDLDefinition} def 
+ * @param {Record<string, import('../../idl/ir').IIDLDefinition>} allDefs 
+ */
+function union_method_for_class(def, allDefs) {
+    var method_defs = {};
+    var deflist = [];
+
+    function check_type(t1, t2) {
+        if (t1 == t2)
+            return true;
+
+        if (!Array.isArray(t1) || !Array.isArray(t2))
+            return false;
+
+        if (t1.length != t2.length)
+            return false;
+
+        for (var i = 0; i < t1.length; i++) {
+            if (t1[i].type != t2[i].type)
+                return false;
+            if (t1[i].name != t2[i].name)
+                return false;
+        }
+
+        return true;
+    }
+
+    // Don't add parent methods to def.members - they should not appear in virtual function definitions
+    // We'll handle parent overloads separately in stub function generation
+
+    def.members.forEach(fn => {
+        var fname = fn.name;
+        var fn1;
+
+        if (fname === def.declare.name && fn.memType == "method")
+            fname = "new " + fname;
+
+        if (fn.memType == "event")
+            fname = "event " + fname;
+
+        if (!method_defs.hasOwnProperty(fname)) {
+            fn1 = JSON.parse(JSON.stringify(fn));
+            fn1.overs = [fn];
+
+            method_defs[fname] = fn1;
+            deflist.push(fn1);
+            return;
+        } else if (fn.memType == "method")
+            fn1 = method_defs[fname];
+        else
+            throw new Error("[union_method] only method can be override.");
+
+        if (fn.memType != fn1.memType ||
+            !check_type(fn.type, fn1.type)
+        ) {
+            throw new Error(`Override function '${fname}' with different return-type.`);
+        }
+
+        fn1.overs.push(fn);
+    });
+
+    def.members = deflist;
 }
 
 function record_exist() {
@@ -27,8 +138,9 @@ function record_exist() {
  * @param {string} cls key of def, name of fibjs's module/interface
  * @param {import('../../idl/ir').IIDLDefinition} def 
  * @param {string} baseFolder 
+ * @param {object} allDefs all definitions for cross-reference
  */
-function gen_code(cls, def, baseFolder) {
+function gen_code(cls, def, baseFolder, allDefs) {
     var typeMap = {
         "Integer": "int32_t",
         "Long": "int64_t",
@@ -41,7 +153,7 @@ function gen_code(cls, def, baseFolder) {
         "Promise": "v8::Local<v8::Promise>",
         "Array": "v8::Local<v8::Array>",
         "Uint8Array": "v8::Local<v8::Uint8Array>",
-        "ArrayBuffer": "v8::Local<v8::ArrayBuffer>",
+        "ArrayBuffer": "std::shared_ptr<v8::BackingStore>",
         "TypedArray": "v8::Local<v8::TypedArray>",
         "Function": "v8::Local<v8::Function>",
         "Value": "v8::Local<v8::Value>",
@@ -56,6 +168,11 @@ function gen_code(cls, def, baseFolder) {
         "method": {
             "declare": fn => {
                 fn.overs.forEach(ov => {
+                    // Only generate virtual function declarations for methods defined in current class
+                    if (ov.sourceClass && ov.sourceClass !== def.declare.name) {
+                        return; // Skip methods from parent classes
+                    }
+
                     var fns = "    ";
                     var fname = get_specname(ov.name);
                     var fstatic = ov.static;
@@ -144,7 +261,7 @@ function gen_code(cls, def, baseFolder) {
                     inst_mem_ovs
                 } = vary_overs(fn, def);
 
-                function make_ov_params(tp_overs) {
+                function make_ov_params(tp_overs, is_load = false) {
                     tp_overs.forEach(ov => {
                         var argc = 0;
                         var opts = 0;
@@ -158,7 +275,8 @@ function gen_code(cls, def, baseFolder) {
                         if (ov.params) {
                             argc = opts = ov.params.length;
                             ov.params.forEach(p => {
-                                args.push('v' + params.length);
+                                const vt = get_vtype(p);
+                                args.push(vt.startsWith('obj_ptr<') ? 'v' + params.length + '.get()' : 'v' + params.length);
                                 if (p.name == '...') {
                                     opts--;
                                     argc = -1;
@@ -170,23 +288,30 @@ function gen_code(cls, def, baseFolder) {
                                 } else if (p.default) {
                                     var defValue;
                                     opts--;
-                                    if(p.isarray)
-                                        defValue = `${get_vtype(p)}()`;
+                                    if (p.isarray)
+                                        defValue = `${vt}()`;
                                     else if (p.default.value)
                                         defValue = p.default.value;
-                                    else if (util.isArray(p.default.const))
+                                    else if (Array.isArray(p.default.const))
                                         defValue = p.default.const[0] + '_base::C_' + p.default.const[1];
                                     else
                                         defValue = 'C_' + p.default.const;
 
-                                    params.push(`    OPT_ARG(${get_vtype(p) + ', ' + params.length}, ` + defValue + `);`);
+                                    params.push(`    OPT_ARG(${vt + ', ' + params.length}, ` + defValue + `);`);
                                 } else {
                                     if (is_func_new(ov, def) && params.length == 0 && ov.params.length == 1 && p.type == ftype)
-                                        params.push(`    STRICT_ARG(${get_vtype(p) + ', ' + params.length});`);
+                                        params.push(`    STRICT_ARG(${vt + ', ' + params.length});`);
                                     else
-                                        params.push(`    ARG(${get_vtype(p) + ', ' + params.length});`);
+                                        params.push(`    ARG(${vt + ', ' + params.length});`);
                                 }
                             });
+                        }
+
+                        // For load function, only output constructor code with required parameters = 1
+                        if (is_load) {
+                            if (argc == 0 || opts > 1) {
+                                return;
+                            }
                         }
 
                         txts.push(`    METHOD_OVER(${argc}, ${opts});\n`);
@@ -240,7 +365,7 @@ function gen_code(cls, def, baseFolder) {
                     }
 
                     if (ov.async)
-                        txts.push(`    ASYNC_METHOD_ENTER();\n`);
+                        txts.push(`    ASYNC_METHOD_ENTER("${cls}");\n`);
                     else
                         txts.push(`    METHOD_ENTER();\n`);
                     make_ov_params(fncallee_ovs);
@@ -262,7 +387,7 @@ function gen_code(cls, def, baseFolder) {
                     txts.push(`inline result_t ${cls}_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<${cls}_base>& retVal)\n{`);
                     txts.push(`    ${get_rtype(def.declare.name)} vr;\n`);
                     txts.push(`    LOAD_ENTER();\n`);
-                    make_ov_params(new_ovs);
+                    make_ov_params(new_ovs, true);
                     txts.push('    LOAD_RETURN();\n}\n');
                 });
 
@@ -275,7 +400,7 @@ function gen_code(cls, def, baseFolder) {
                     if (ov.type) txts.push(`    ${get_rtype(ov.type)} vr;\n`);
 
                     if (ov.async)
-                        txts.push(`    ASYNC_METHOD_ENTER();\n`);
+                        txts.push(`    ASYNC_METHOD_ENTER("${cls}.${ov.symbol}${ov.name}");\n`);
                     else
                         txts.push(`    METHOD_ENTER();\n`);
                     make_ov_params(static_ovs);
@@ -294,14 +419,13 @@ function gen_code(cls, def, baseFolder) {
 
                     if (ov.type) txts.push(`    ${get_rtype(ov.type)} vr;\n`);
 
-                    if (ov.async)
+                    if (ov.async) {
                         txts.push(`    ASYNC_METHOD_INSTANCE(${cls}_base);`);
-                    else
+                        txts.push(`    ASYNC_METHOD_ENTER("${cls}.${ov.symbol}${ov.name}");\n`);
+                    } else {
                         txts.push(`    METHOD_INSTANCE(${cls}_base);`);
-                    if (ov.async)
-                        txts.push(`    ASYNC_METHOD_ENTER();\n`);
-                    else
                         txts.push(`    METHOD_ENTER();\n`);
+                    }
                     make_ov_params(inst_mem_ovs);
 
                     if (ov.type) txts.push('    METHOD_RETURN();\n}\n');
@@ -388,6 +512,45 @@ function gen_code(cls, def, baseFolder) {
                         txts.push(`    hr = set_${get_name(fname, fn, def)}(v0);\n`);
                     else
                         txts.push(`    hr = pInst->set_${get_name(fname, fn, def)}(v0);\n`);
+                    txts.push(`    METHOD_VOID();\n}\n`);
+                }
+
+            }
+        },
+        "event": {
+            "declare": () => { },
+            "stub": fn => {
+                var fname = fn.name;
+
+                if (fname) {
+                    txts.push(`    static void ${get_stub_func_prefix(fn, def)}get_on${get_name(fname, fn, def)}(const v8::FunctionCallbackInfo<v8::Value>& args);`);
+                    if (!fn.readonly)
+                        txts.push(`    static void ${get_stub_func_prefix(fn, def)}set_on${get_name(fname, fn, def)}(const v8::FunctionCallbackInfo<v8::Value>& args);`);
+                }
+            },
+            "stub_func": fn => {
+                var fname = fn.name;
+
+                txts.push(`inline void ${cls}_base::${get_stub_func_prefix(fn, def)}get_on${get_name(fname, fn, def)}(const v8::FunctionCallbackInfo<v8::Value>& args)\n{\n    ${get_rtype("Function")} vr;\n`);
+
+                txts.push(`    METHOD_INSTANCE(${cls}_base);`);
+                txts.push(`    METHOD_ENTER();\n\n    METHOD_OVER(0, 0);\n`);
+
+                if (fn.deprecated)
+                    txts.push(`    DEPRECATED_SOON("${cls}.get_on${fname}");\n`);
+
+                txts.push(`    hr = pInst->getListener("${fname}", vr);\n`);
+                txts.push(`    METHOD_RETURN();\n}\n`);
+
+                if (!fn.readonly) {
+                    txts.push(`inline void ${cls}_base::${get_stub_func_prefix(fn, def)}set_on${get_name(fname, fn, def)}(const v8::FunctionCallbackInfo<v8::Value>& args)\n{`);
+                    txts.push(`    METHOD_INSTANCE(${cls}_base);`);
+                    txts.push(`    METHOD_ENTER();\n\n    METHOD_OVER(1, 1);\n\n    ARG(${get_rtype("Function")}, 0);\n`);
+
+                    if (fn.deprecated)
+                        txts.push(`    DEPRECATED_SOON("${cls}.set_on${fname}");\n`);
+
+                    txts.push(`    hr = pInst->setListener("${fname}", v0);\n`);
                     txts.push(`    METHOD_VOID();\n}\n`);
                 }
 
@@ -493,8 +656,6 @@ function gen_code(cls, def, baseFolder) {
     var fnNamed = null;
 
     MAIN: {
-        union_method();
-
         build_refer();
 
         gen_begin();
@@ -517,9 +678,9 @@ function gen_code(cls, def, baseFolder) {
 
         var fname = path.join(baseFolder, cls + ".h");
 
-        if (!fs.exists(fname) || txt !== fs.readTextFile(fname)) {
-            console.log(cls + ".h");
-            fs.writeTextFile(fname, txt);
+        if (!fs.existsSync(fname) || txt !== fs.readFileSync(fname, 'utf8')) {
+            console.log(`      ✏️  ${cls}.h`);
+            fs.writeFileSync(fname, txt);
         }
     }
 
@@ -573,11 +734,89 @@ function gen_code(cls, def, baseFolder) {
         return get_specname(fn.name)
     }
 
+    function collect_parent_overloads(methodName, def) {
+        var parentOverloads = [];
+
+        // Check if this method exists in current class (indicating it's overridden)
+        var isOverridden = def.members.some(m =>
+            m.memType === "method" &&
+            m.name === methodName &&
+            !m.static &&
+            m.name !== def.declare.name
+        );
+
+        if (!isOverridden || !def.declare.extend) {
+            return parentOverloads;
+        }
+
+        // For 'object' class, we need to handle it specially since it might not be in allDefs
+        if (def.declare.extend === 'object') {
+            // object class has toString() method with no parameters
+            if (methodName === 'toString') {
+                var objectToStringOver = {
+                    name: 'toString',
+                    memType: 'method',
+                    params: [],
+                    type: 'String',
+                    inherit: true,
+                    sourceClass: 'object'
+                };
+                parentOverloads.push(objectToStringOver);
+            }
+            return parentOverloads;
+        }
+
+        if (!allDefs[def.declare.extend]) {
+            return parentOverloads;
+        }
+
+        var parentDef = allDefs[def.declare.extend];
+        var parentMethod = parentDef.members.find(m =>
+            m.memType === "method" &&
+            m.name === methodName &&
+            !m.static &&
+            m.name !== parentDef.declare.name
+        );
+
+        if (parentMethod && parentMethod.overs) {
+            parentMethod.overs.forEach(parentOver => {
+                // Only add parent overloads that don't exist in current class
+                var existsInCurrent = def.members.some(m =>
+                    m.memType === "method" &&
+                    m.name === methodName &&
+                    m.overs && m.overs.some(ov =>
+                        ov.params && parentOver.params &&
+                        ov.params.length === parentOver.params.length &&
+                        ov.params.every((p, i) =>
+                            parentOver.params[i] &&
+                            p.type === parentOver.params[i].type
+                        )
+                    )
+                );
+
+                if (!existsInCurrent) {
+                    var inheritedOver = JSON.parse(JSON.stringify(parentOver));
+                    inheritedOver.inherit = true;
+                    inheritedOver.sourceClass = parentDef.declare.name;
+                    parentOverloads.push(inheritedOver);
+                }
+            });
+        }
+
+        return parentOverloads;
+    }
+
     function vary_overs(fn, def) {
         var fncallee_ovs = fn.overs.filter(ov => is_func_Function(ov, def));
         var new_ovs = fn.overs.filter(ov => is_func_new(ov, def));
         var static_ovs = fn.overs.filter(ov => !!ov.static && !is_func_new(ov, def) && !is_func_Function(ov, def));
         var inst_mem_ovs = fn.overs.filter(ov => !ov.static && !is_func_new(ov, def) && !is_func_Function(ov, def));
+
+        // For instance methods, also include parent class overloads
+        if (inst_mem_ovs.length > 0) {
+            var parentOverloads = collect_parent_overloads(fn.name, def);
+            inst_mem_ovs = inst_mem_ovs.concat(parentOverloads);
+        }
 
         return {
             fncallee_ovs,
@@ -659,6 +898,10 @@ function gen_code(cls, def, baseFolder) {
             else
                 txts.push(`class ${cls}_base {`);
             txts.push(`    DECLARE_CLASS(${cls}_base);`);
+
+            if (def.declare.extend === 'EventEmitter') {
+                txts.push(`    EVENT_SUPPORT();`);
+            }
         }
 
         function gen_cls_consts() {
@@ -757,8 +1000,7 @@ function gen_code(cls, def, baseFolder) {
                 txts.push([
                     "public:\n    static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)\n    {\n",
                     "        CONSTRUCT_INIT();\n\n",
-                    "        isolate->m_isolate->ThrowException(\n",
-                    "            isolate->NewString(\"not a constructor\"));\n    }\n"
+                    "        ThrowTypeError(\"not a constructor\");\n    }\n"
                 ].join(''));
 
                 txts.push(`    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<${cls}_base>& retVal)`);
@@ -812,11 +1054,48 @@ function gen_code(cls, def, baseFolder) {
                 txts.pop();
         }
 
+        function gen_cls_using_declarations() {
+            // Generate using declarations for overridden parent methods
+            if (!def.declare.extend) return;
+
+            var parentDef = allDefs[def.declare.extend];
+            if (!parentDef) return;
+
+            var overriddenMethods = new Set();
+            var usingDeclarations = [];
+
+            // Find methods that are overridden in current class
+            def.members.forEach(fn => {
+                if (fn.memType === "method" && fn.name !== cls && !fn.static) {
+                    overriddenMethods.add(fn.name);
+                }
+            });
+
+            // Check parent class for methods with same names
+            parentDef.members.forEach(parentFn => {
+                if (parentFn.memType === "method" &&
+                    parentFn.name !== parentDef.declare.name &&
+                    !parentFn.static &&
+                    overriddenMethods.has(parentFn.name)) {
+
+                    // Add using declaration for overridden method
+                    usingDeclarations.push(`    using ${def.declare.extend}_base::${parentFn.name};`);
+                }
+            });
+
+            if (usingDeclarations.length > 0) {
+                txts.push("");
+                txts.push("public:");
+                usingDeclarations.forEach(decl => txts.push(decl));
+            }
+        }
+
         function gen_cls_declare_end() {
             txts.push("};");
         }
 
         gen_cls_declare();
+        gen_cls_using_declarations();
         gen_cls_consts();
         gen_cls_retTypes();
         gen_cls_members();
@@ -926,6 +1205,13 @@ function gen_code(cls, def, baseFolder) {
                         `${fn.readonly ? `block_set` : (`${get_stub_func_prefix(fn, def)}set_` + get_name(fname, fn, def))}, `,
                         `${fn.static ? `true` : `false`} }`
                     ].join(''));
+                } else if (fn.memType == 'event') {
+                    var fname = fn.name;
+                    deflist.push([
+                        `        { "on${fname}", ${get_stub_func_prefix(fn, def)}get_on${get_name(fname, fn, def)}, `,
+                        `${fn.readonly ? `block_set` : (`${get_stub_func_prefix(fn, def)}set_on` + get_name(fname, fn, def))}, `,
+                        `${fn.static ? `true` : `false`} }`
+                    ].join(''));
                 }
             });
 
@@ -1025,69 +1311,12 @@ function gen_code(cls, def, baseFolder) {
                     return;
                 ov.params.forEach(p => {
                     add_type(p.type);
-                    if (p.default && util.isArray(p.default.const) && p.default.const.length > 1)
+                    if (p.default && Array.isArray(p.default.const) && p.default.const.length > 1)
                         add_type(p.default.const[0]);
                 });
             });
         });
 
         refers = Object.keys(types);
-    }
-
-    function union_method() {
-        var method_defs = {};
-        var deflist = [];
-
-        function check_type(t1, t2) {
-            if (t1 == t2)
-                return true;
-
-            if (!util.isArray(t1) || !util.isArray(t2))
-                return false;
-
-            if (t1.length != t2.length)
-                return false;
-
-            for (var i = 0; i < t1.length; i++) {
-                if (t1[i].type != t2[i].type)
-                    return false;
-                if (t1[i].name != t2[i].name)
-                    return false;
-            }
-
-            return true;
-        }
-
-        def.members.forEach(fn => {
-            var fname = fn.name;
-            var fstatic = fn.static;
-            var fn1;
-
-            if (fname === cls && fn.memType == "method")
-                fname = "new " + fname;
-
-            if (!method_defs.hasOwnProperty(fname)) {
-                fn1 = util.clone(fn);
-                fn1.overs = [fn];
-
-                method_defs[fname] = fn1;
-                deflist.push(fn1);
-                return;
-            } else if (fn.memType == "method")
-                fn1 = method_defs[fname];
-            else
-                throw new Error("[union_method] only method can be override.");
-
-            if (
-                fn.memType != fn1.memType ||
-                !check_type(fn.type, fn1.type)
-            ) {
-                throw new Error(`Override function '${fname}' with different return-type.`);
-            }
-
-            fn1.overs.push(fn);
-        });
-
-        def.members = deflist;
     }
 }

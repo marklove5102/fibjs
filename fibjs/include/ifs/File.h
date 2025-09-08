@@ -12,64 +12,106 @@
  */
 
 #include "../object.h"
-#include "ifs/SeekableStream.h"
+#include "ifs/Blob.h"
 
 namespace fibjs {
 
-class SeekableStream_base;
+class Blob_base;
+class Buffer_base;
 
-class File_base : public SeekableStream_base {
+class File_base : public Blob_base {
     DECLARE_CLASS(File_base);
 
 public:
     // File_base
+    static result_t _new(v8::Local<v8::Array> blobParts, exlib::string name, v8::Local<v8::Object> options, obj_ptr<File_base>& retVal, v8::Local<v8::Object> This = v8::Local<v8::Object>());
+    static result_t _new(Buffer_base* blobData, exlib::string name, v8::Local<v8::Object> options, obj_ptr<File_base>& retVal, v8::Local<v8::Object> This = v8::Local<v8::Object>());
+    static result_t _new(v8::Local<v8::Object> options, obj_ptr<File_base>& retVal, v8::Local<v8::Object> This = v8::Local<v8::Object>());
     virtual result_t get_name(exlib::string& retVal) = 0;
-    virtual result_t get_fd(int32_t& retVal) = 0;
-    virtual result_t chmod(int32_t mode, AsyncEvent* ac) = 0;
+    virtual result_t get_lastModified(double& retVal) = 0;
 
 public:
-    static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
-    {
-        CONSTRUCT_INIT();
-
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
-    }
-
-    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<File_base>& retVal)
-    { return CALL_E_TYPEMISMATCH; }
+    static void __new(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<File_base>& retVal);
 
 public:
+    static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_name(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static void s_get_fd(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static void s_chmod(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-public:
-    ASYNC_MEMBER1(File_base, chmod, int32_t);
+    static void s_get_lastModified(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 }
+
+#include "ifs/Buffer.h"
 
 namespace fibjs {
 inline ClassInfo& File_base::class_info()
 {
-    static ClassData::ClassMethod s_method[] = {
-        { "chmod", s_chmod, false, ClassData::ASYNC_ASYNC }
-    };
-
     static ClassData::ClassProperty s_property[] = {
         { "name", s_get_name, block_set, false },
-        { "fd", s_get_fd, block_set, false }
+        { "lastModified", s_get_lastModified, block_set, false }
     };
 
     static ClassData s_cd = {
         "File", false, s__new, NULL,
-        ARRAYSIZE(s_method), s_method, 0, NULL, ARRAYSIZE(s_property), s_property, 0, NULL, NULL, NULL,
-        &SeekableStream_base::class_info(),
-        true
+        0, NULL, 0, NULL, ARRAYSIZE(s_property), s_property, 0, NULL, NULL, NULL,
+        &Blob_base::class_info(),
+        false
     };
 
     static ClassInfo s_ci(s_cd);
     return s_ci;
+}
+
+inline void File_base::s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    CONSTRUCT_INIT();
+    __new(args);
+}
+
+inline void File_base::__new(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    obj_ptr<File_base> vr;
+
+    CONSTRUCT_ENTER();
+
+    METHOD_OVER(3, 2);
+
+    ARG(v8::Local<v8::Array>, 0);
+    ARG(exlib::string, 1);
+    OPT_ARG(v8::Local<v8::Object>, 2, v8::Object::New(isolate->m_isolate));
+
+    hr = _new(v0, v1, v2, vr, args.This());
+
+    METHOD_OVER(3, 2);
+
+    ARG(obj_ptr<Buffer_base>, 0);
+    ARG(exlib::string, 1);
+    OPT_ARG(v8::Local<v8::Object>, 2, v8::Object::New(isolate->m_isolate));
+
+    hr = _new(v0.get(), v1, v2, vr, args.This());
+
+    METHOD_OVER(1, 0);
+
+    OPT_ARG(v8::Local<v8::Object>, 0, v8::Object::New(isolate->m_isolate));
+
+    hr = _new(v0, vr, args.This());
+
+    CONSTRUCT_RETURN();
+}
+
+inline result_t File_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<File_base>& retVal)
+{
+    obj_ptr<File_base> vr;
+
+    LOAD_ENTER();
+
+    METHOD_OVER(1, 0);
+
+    OPT_ARG(v8::Local<v8::Object>, 0, v8::Object::New(isolate->m_isolate));
+
+    hr = _new(v0, vr, args.This());
+
+    LOAD_RETURN();
 }
 
 inline void File_base::s_get_name(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -86,34 +128,17 @@ inline void File_base::s_get_name(const v8::FunctionCallbackInfo<v8::Value>& arg
     METHOD_RETURN();
 }
 
-inline void File_base::s_get_fd(const v8::FunctionCallbackInfo<v8::Value>& args)
+inline void File_base::s_get_lastModified(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    int32_t vr;
+    double vr;
 
     METHOD_INSTANCE(File_base);
     METHOD_ENTER();
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_fd(vr);
+    hr = pInst->get_lastModified(vr);
 
     METHOD_RETURN();
-}
-
-inline void File_base::s_chmod(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    ASYNC_METHOD_INSTANCE(File_base);
-    ASYNC_METHOD_ENTER();
-
-    METHOD_OVER(1, 1);
-
-    ARG(int32_t, 0);
-
-    if (!cb.IsEmpty())
-        hr = pInst->acb_chmod(v0, cb, args);
-    else
-        hr = pInst->ac_chmod(v0);
-
-    METHOD_VOID();
 }
 }

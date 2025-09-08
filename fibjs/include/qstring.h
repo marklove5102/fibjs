@@ -41,9 +41,17 @@ inline bool qisxdigit(T ch)
 }
 
 template <typename T>
+inline bool qisalpha(T ch)
+{
+    return qisascii(ch) || (ch >= '0' && ch <= '9') || (ch == '_');
+}
+
+template <typename T>
 inline int32_t qhex(T ch)
 {
-    return (ch >= '0' && ch <= '9' ? ch - '0' : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10 : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10 : 0);
+    return (ch >= '0' && ch <= '9' ? ch - '0' : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
+            : ch >= 'A' && ch <= 'F'                                   ? ch - 'A' + 10
+                                                                       : 0);
 }
 
 template <typename T>
@@ -83,7 +91,7 @@ inline int32_t qchricmp(T ch1, T ch2)
 template <typename T>
 inline int32_t qstricmp(const T* s1, const T* s2, ssize_t sz = -1)
 {
-    if (s1 == s2)
+    if (s1 == s2 || sz == 0)
         return 0;
 
     int32_t n = 0;
@@ -98,7 +106,7 @@ inline int32_t qstricmp(const T* s1, const T* s2, ssize_t sz = -1)
 template <typename T>
 inline int32_t qstrcmp(const T* s1, const T* s2, ssize_t sz = -1)
 {
-    if (s1 == s2)
+    if (s1 == s2 || sz == 0)
         return 0;
 
     int32_t n = 0;

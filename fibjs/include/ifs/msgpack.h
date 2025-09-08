@@ -30,8 +30,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<msgpack_base>& retVal)
@@ -89,7 +88,7 @@ inline void msgpack_base::s_static_decode(const v8::FunctionCallbackInfo<v8::Val
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = decode(v0, vr);
+    hr = decode(v0.get(), vr);
 
     METHOD_RETURN();
 }

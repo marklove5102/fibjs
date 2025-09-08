@@ -22,6 +22,7 @@ extern FILE* g_cov;
 
 extern bool g_tcpdump;
 extern bool g_ssldump;
+extern bool g_pipedump;
 
 extern exlib::string g_exec_code;
 
@@ -30,6 +31,8 @@ extern bool g_uv_socket;
 extern bool g_track_native_object;
 
 extern bool g_openssl_legacy_provider;
+
+extern bool g_sync_console;
 
 struct OptData {
     const char* name;

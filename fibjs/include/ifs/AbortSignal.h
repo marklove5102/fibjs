@@ -20,20 +20,22 @@ class EventEmitter_base;
 
 class AbortSignal_base : public EventEmitter_base {
     DECLARE_CLASS(AbortSignal_base);
+    EVENT_SUPPORT();
 
 public:
     // AbortSignal_base
-    virtual result_t abort(exlib::string reason) = 0;
+    virtual result_t abort(exlib::string reason, obj_ptr<AbortSignal_base>& retVal) = 0;
+    virtual result_t abort(v8::Local<v8::Value> reason, obj_ptr<AbortSignal_base>& retVal) = 0;
+    virtual result_t throwIfAborted() = 0;
     virtual result_t get_aborted(bool& retVal) = 0;
-    virtual result_t get_onabort(v8::Local<v8::Function>& retVal) = 0;
+    virtual result_t get_reason(v8::Local<v8::Value>& retVal) = 0;
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<AbortSignal_base>& retVal)
@@ -41,8 +43,11 @@ public:
 
 public:
     static void s_abort(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_throwIfAborted(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_aborted(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_get_reason(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_onabort(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_set_onabort(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 }
 
@@ -50,12 +55,14 @@ namespace fibjs {
 inline ClassInfo& AbortSignal_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
-        { "abort", s_abort, false, ClassData::ASYNC_SYNC }
+        { "abort", s_abort, false, ClassData::ASYNC_SYNC },
+        { "throwIfAborted", s_throwIfAborted, false, ClassData::ASYNC_SYNC }
     };
 
     static ClassData::ClassProperty s_property[] = {
         { "aborted", s_get_aborted, block_set, false },
-        { "onabort", s_get_onabort, block_set, false }
+        { "reason", s_get_reason, block_set, false },
+        { "onabort", s_get_onabort, s_set_onabort, false }
     };
 
     static ClassData s_cd = {
@@ -71,6 +78,8 @@ inline ClassInfo& AbortSignal_base::class_info()
 
 inline void AbortSignal_base::s_abort(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
+    obj_ptr<AbortSignal_base> vr;
+
     METHOD_INSTANCE(AbortSignal_base);
     METHOD_ENTER();
 
@@ -78,7 +87,25 @@ inline void AbortSignal_base::s_abort(const v8::FunctionCallbackInfo<v8::Value>&
 
     OPT_ARG(exlib::string, 0, "AbortError");
 
-    hr = pInst->abort(v0);
+    hr = pInst->abort(v0, vr);
+
+    METHOD_OVER(1, 1);
+
+    ARG(v8::Local<v8::Value>, 0);
+
+    hr = pInst->abort(v0, vr);
+
+    METHOD_RETURN();
+}
+
+inline void AbortSignal_base::s_throwIfAborted(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_INSTANCE(AbortSignal_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->throwIfAborted();
 
     METHOD_VOID();
 }
@@ -97,6 +124,20 @@ inline void AbortSignal_base::s_get_aborted(const v8::FunctionCallbackInfo<v8::V
     METHOD_RETURN();
 }
 
+inline void AbortSignal_base::s_get_reason(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    v8::Local<v8::Value> vr;
+
+    METHOD_INSTANCE(AbortSignal_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->get_reason(vr);
+
+    METHOD_RETURN();
+}
+
 inline void AbortSignal_base::s_get_onabort(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     v8::Local<v8::Function> vr;
@@ -106,8 +147,22 @@ inline void AbortSignal_base::s_get_onabort(const v8::FunctionCallbackInfo<v8::V
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onabort(vr);
+    hr = pInst->getListener("abort", vr);
 
     METHOD_RETURN();
+}
+
+inline void AbortSignal_base::s_set_onabort(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_INSTANCE(AbortSignal_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(v8::Local<v8::Function>, 0);
+
+    hr = pInst->setListener("abort", v0);
+
+    METHOD_VOID();
 }
 }

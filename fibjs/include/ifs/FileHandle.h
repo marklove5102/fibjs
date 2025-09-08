@@ -36,8 +36,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<FileHandle_base>& retVal)
@@ -107,7 +106,7 @@ inline void FileHandle_base::s_get_fd(const v8::FunctionCallbackInfo<v8::Value>&
 inline void FileHandle_base::s_chmod(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(FileHandle_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("FileHandle.chmod");
 
     METHOD_OVER(1, 1);
 
@@ -126,7 +125,7 @@ inline void FileHandle_base::s_stat(const v8::FunctionCallbackInfo<v8::Value>& a
     obj_ptr<Stat_base> vr;
 
     ASYNC_METHOD_INSTANCE(FileHandle_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("FileHandle.stat");
 
     METHOD_OVER(0, 0);
 
@@ -143,7 +142,7 @@ inline void FileHandle_base::s_read(const v8::FunctionCallbackInfo<v8::Value>& a
     int32_t vr;
 
     ASYNC_METHOD_INSTANCE(FileHandle_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("FileHandle.read");
 
     METHOD_OVER(4, 1);
 
@@ -153,9 +152,9 @@ inline void FileHandle_base::s_read(const v8::FunctionCallbackInfo<v8::Value>& a
     OPT_ARG(int32_t, 3, -1);
 
     if (!cb.IsEmpty())
-        hr = pInst->acb_read(v0, v1, v2, v3, cb, args);
+        hr = pInst->acb_read(v0.get(), v1, v2, v3, cb, args);
     else
-        hr = pInst->ac_read(v0, v1, v2, v3, vr);
+        hr = pInst->ac_read(v0.get(), v1, v2, v3, vr);
 
     METHOD_RETURN();
 }
@@ -165,7 +164,7 @@ inline void FileHandle_base::s_write(const v8::FunctionCallbackInfo<v8::Value>& 
     int32_t vr;
 
     ASYNC_METHOD_INSTANCE(FileHandle_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("FileHandle.write");
 
     METHOD_OVER(4, 1);
 
@@ -175,9 +174,9 @@ inline void FileHandle_base::s_write(const v8::FunctionCallbackInfo<v8::Value>& 
     OPT_ARG(int32_t, 3, -1);
 
     if (!cb.IsEmpty())
-        hr = pInst->acb_write(v0, v1, v2, v3, cb, args);
+        hr = pInst->acb_write(v0.get(), v1, v2, v3, cb, args);
     else
-        hr = pInst->ac_write(v0, v1, v2, v3, vr);
+        hr = pInst->ac_write(v0.get(), v1, v2, v3, vr);
 
     METHOD_OVER(3, 1);
 
@@ -196,7 +195,7 @@ inline void FileHandle_base::s_write(const v8::FunctionCallbackInfo<v8::Value>& 
 inline void FileHandle_base::s_close(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(FileHandle_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("FileHandle.close");
 
     METHOD_OVER(0, 0);
 

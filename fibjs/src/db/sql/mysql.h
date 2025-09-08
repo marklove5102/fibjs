@@ -24,6 +24,8 @@ public:
     virtual result_t get_type(exlib::string& retVal);
     virtual result_t close(AsyncEvent* ac);
     virtual result_t execute(exlib::string sql, obj_ptr<NArray>& retVal, AsyncEvent* ac);
+    virtual result_t getTables(obj_ptr<NArray>& retVal, AsyncEvent* ac);
+    virtual result_t getTableInfo(exlib::string tableName, obj_ptr<NArray>& retVal, AsyncEvent* ac);
 
 public:
     // MySQL_base
@@ -86,22 +88,6 @@ public:
         retVal.append("\')", 2);
 
         return retVal;
-    }
-
-public:
-    static const DataType& data_type()
-    {
-        static DataType _data_type = {
-            "FLOAT",
-            "DOUBLE",
-            "DATETIME",
-            "VARCHAR",
-            "LONGTEXT",
-            "BLOB",
-            "LONGBLOB"
-        };
-
-        return _data_type;
     }
 
 private:

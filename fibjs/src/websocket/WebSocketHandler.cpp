@@ -48,6 +48,12 @@ WebSocketHandler::WebSocketHandler(v8::Local<v8::Function> accept, bool enableCo
     on("accept", accept, r);
 }
 
+result_t WebSocketHandler::isRouting(bool& retVal)
+{
+    retVal = false;
+    return 0;
+}
+
 result_t WebSocketHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
     AsyncEvent* ac)
 {
@@ -114,8 +120,8 @@ result_t WebSocketHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             base64Encode((const char*)output, 20, false, out);
 
             m_httprep->set_statusCode(101);
-            m_httprep->addHeader("Sec-WebSocket-Accept", out);
-            m_httprep->addHeader("Upgrade", "websocket");
+            m_httprep->appendHeader("Sec-WebSocket-Accept", out);
+            m_httprep->appendHeader("Upgrade", "websocket");
             m_httprep->set_upgrade(true);
 
             hr = m_httpreq->firstHeader("Sec-WebSocket-Extensions", v);
@@ -123,7 +129,7 @@ result_t WebSocketHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
                 return hr;
 
             if (hr != CALL_RETURN_NULL && m_pThis->m_enableCompress && !qstricmp(v.c_str(), "permessage-deflate", 18)) {
-                m_httprep->addHeader("Sec-WebSocket-Extensions", "permessage-deflate");
+                m_httprep->appendHeader("Sec-WebSocket-Extensions", "permessage-deflate");
                 m_compress = true;
             }
 

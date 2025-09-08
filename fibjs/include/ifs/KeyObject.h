@@ -32,8 +32,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<KeyObject_base>& retVal)
@@ -158,7 +157,7 @@ inline void KeyObject_base::s_equals(const v8::FunctionCallbackInfo<v8::Value>& 
 
     ARG(obj_ptr<KeyObject_base>, 0);
 
-    hr = pInst->equals(v0, vr);
+    hr = pInst->equals(v0.get(), vr);
 
     METHOD_RETURN();
 }

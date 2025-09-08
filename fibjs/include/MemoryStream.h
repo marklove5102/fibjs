@@ -11,12 +11,13 @@
 #include "ifs/fs.h"
 #include "ifs/MemoryStream.h"
 #include <sstream>
+#include "AsyncStream.h"
 
 namespace fibjs {
 
-class MemoryStream : public MemoryStream_base {
+class MemoryStream : public AsyncStream<MemoryStream_base> {
 public:
-    class CloneStream : public MemoryStream_base {
+    class CloneStream : public AsyncStream<MemoryStream_base> {
     public:
         CloneStream(exlib::string buffer, date_t tm)
             : m_buffer(buffer)
@@ -30,7 +31,7 @@ public:
         // Stream_base
         virtual result_t get_fd(int32_t& retVal);
         virtual result_t read(int32_t bytes, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
-        virtual result_t write(Buffer_base* data, AsyncEvent* ac);
+        virtual result_t write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac);
         virtual result_t flush(AsyncEvent* ac);
         virtual result_t close(AsyncEvent* ac);
         virtual result_t copyTo(Stream_base* stm, int64_t bytes, int64_t& retVal, AsyncEvent* ac);
@@ -68,7 +69,7 @@ public:
     // Stream_base
     virtual result_t get_fd(int32_t& retVal);
     virtual result_t read(int32_t bytes, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
-    virtual result_t write(Buffer_base* data, AsyncEvent* ac);
+    virtual result_t write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac);
     virtual result_t flush(AsyncEvent* ac);
     virtual result_t close(AsyncEvent* ac);
     virtual result_t copyTo(Stream_base* stm, int64_t bytes, int64_t& retVal, AsyncEvent* ac);

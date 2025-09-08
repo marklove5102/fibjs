@@ -76,8 +76,6 @@ public:
         m_ready = new Event();
     }
 
-    EVENT_SUPPORT();
-
 public:
     // WebView_base
     virtual result_t loadUrl(exlib::string url, AsyncEvent* ac);
@@ -109,16 +107,6 @@ public:
 
 public:
     void postWaitFor(exlib::string url);
-
-public:
-    EVENT_FUNC(loading);
-    EVENT_FUNC(load);
-    EVENT_FUNC(move);
-    EVENT_FUNC(resize);
-    EVENT_FUNC(focus);
-    EVENT_FUNC(blur);
-    EVENT_FUNC(close);
-    EVENT_FUNC(message);
 
 public:
     result_t createWebView();

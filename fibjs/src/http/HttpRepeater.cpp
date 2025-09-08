@@ -114,6 +114,12 @@ result_t HttpRepeater::get_client(obj_ptr<HttpClient_base>& retVal)
     return 0;
 }
 
+result_t HttpRepeater::isRouting(bool& retVal)
+{
+    retVal = true;
+    return 0;
+}
+
 result_t HttpRepeater::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
     AsyncEvent* ac)
 {
@@ -135,7 +141,7 @@ result_t HttpRepeater::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             pThis->m_lock.unlock();
 
             exlib::string pathname = u->pathname();
-            if (!isUrlSlash(v.c_str()[0]))
+            if (!isUrlSlash(v[0]))
                 pathname.append(1, '/');
 
             pathname.append(v);
@@ -150,13 +156,10 @@ result_t HttpRepeater::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             req->get_method(m_method);
             req->get_body(m_body);
 
-            obj_ptr<HttpCollection_base> headers;
-            req->get_headers(headers);
+            req->get_headers(m_headers);
 
-            headers->remove("Host");
-            headers->remove("Connection");
-
-            headers->all("", m_headers);
+            m_headers->remove("Host");
+            m_headers->remove("Connection");
 
             req->get_response(m_rep);
 
@@ -173,7 +176,7 @@ result_t HttpRepeater::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
         {
             int32_t code;
             exlib::string msg;
-            obj_ptr<NObject> headers;
+            obj_ptr<Headers_base> headers;
             obj_ptr<SeekableStream_base> body;
 
             m_ret->get_statusCode(code);
@@ -182,8 +185,8 @@ result_t HttpRepeater::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             m_ret->get_statusMessage(msg);
             m_rep->set_statusMessage(msg);
 
-            m_ret->allHeader("", headers);
-            m_rep.As<HttpResponse>()->addHeader(headers);
+            m_ret->get_headers(headers);
+            m_rep.As<HttpResponse>()->appendHeader(headers);
 
             m_ret->get_body(body);
             m_rep->set_body(body);
@@ -196,7 +199,7 @@ result_t HttpRepeater::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
         exlib::string m_method;
         exlib::string m_url;
         obj_ptr<SeekableStream_base> m_body;
-        obj_ptr<NObject> m_headers;
+        obj_ptr<Headers_base> m_headers;
         obj_ptr<HttpResponse_base> m_ret;
         obj_ptr<HttpResponse_base> m_rep;
     };

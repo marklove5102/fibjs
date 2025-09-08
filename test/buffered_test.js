@@ -9,6 +9,7 @@ var mq = require('mq');
 var coroutine = require('coroutine');
 
 var base_port = coroutine.vmid * 10000;
+const is_win32 = process.platform === 'win32';
 
 describe("buffered stream", () => {
     var s;
@@ -131,6 +132,39 @@ describe("buffered stream", () => {
         assert.equal(r.readLine(), "哈哈哈");
 
         f.close();
+    });
+
+    it("write return value validation", () => {
+        var tempFile = path.join(__dirname, 'buffered_write_test' + base_port);
+
+        try {
+            var f = fs.openFile(tempFile, 'w+');
+            var buffered = new io.BufferedStream(f);
+
+            // Test writeText return value
+            var testText = 'Hello, world!';
+            var result = buffered.writeText(testText);
+            // writeText should return undefined (void function)
+            assert.equal(result, 13);
+
+            // Test writeLine return value
+            var testLine = 'Test Line';
+            result = buffered.writeLine(testLine);
+            // writeLine should return undefined (void function)
+            assert.equal(result, is_win32 ? 11 : 10); // Windows adds \r\n, others just \n
+
+            // Verify the content was written correctly
+            f.rewind();
+            var content = f.readAll().toString();
+            assert.ok(content.includes(testText));
+            assert.ok(content.includes(testLine));
+
+            f.close();
+        } finally {
+            try {
+                fs.unlink(tempFile);
+            } catch (e) { }
+        }
     });
 });
 

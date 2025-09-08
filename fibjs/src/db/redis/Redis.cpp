@@ -94,7 +94,7 @@ result_t Redis::_command(exlib::string& req, Variant& retVal, AsyncEvent* ac)
         ON_STATE(asyncCommand, send)
         {
             m_buffer = new Buffer(m_req.c_str(), m_req.length());
-            return m_stmBuffered->write(m_buffer, next(read));
+            return m_stmBuffered->write(m_buffer, m_len, next(read));
         }
 
         ON_STATE(asyncCommand, read)
@@ -192,7 +192,7 @@ result_t Redis::_command(exlib::string& req, Variant& retVal, AsyncEvent* ac)
             if (m_strLine.length() == 0)
                 return CHECK_ERROR(Runtime::setError("Redis: Invalid response."));
 
-            char ch = m_strLine.c_str()[0];
+            char ch = m_strLine[0];
 
             if (ch == '+') {
                 m_val = new Buffer(m_strLine.c_str() + 1, m_strLine.length() - 1);
@@ -268,6 +268,7 @@ result_t Redis::_command(exlib::string& req, Variant& retVal, AsyncEvent* ac)
         exlib::string m_req;
         Variant& m_retVal;
         Variant m_val;
+        int32_t m_len;
         obj_ptr<BufferedStream_base> m_stmBuffered;
         obj_ptr<Buffer_base> m_buffer;
         QuickArray<obj_ptr<NArray>> m_lists;

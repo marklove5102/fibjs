@@ -12,10 +12,11 @@
 #include "ifs/io.h"
 #include "Buffer.h"
 #include "parse.h"
+#include "AsyncStream.h"
 
 namespace fibjs {
 
-class ChunkedStream : public Stream_base {
+class ChunkedStream : public AsyncStream<Stream_base> {
 public:
     ChunkedStream(BufferedStream_base* stm, int32_t maxChunkSize, int32_t maxBodySize)
         : m_stm(stm)
@@ -125,7 +126,7 @@ public:
         return (new asyncReadFrom(this, bytes, retVal, ac))->post(0);
     }
 
-    virtual result_t write(Buffer_base* data, AsyncEvent* ac)
+    virtual result_t write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac)
     {
         return CALL_E_INVALID_CALL;
     }

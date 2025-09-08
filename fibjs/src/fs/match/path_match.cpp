@@ -12,14 +12,56 @@
 
 namespace fibjs {
 
+// MinimatchPattern Implementation
+
+MinimatchPattern::MinimatchPattern(const std::string& pattern, bool isWindows)
+    : isWindows_(isWindows)
+    , original_pattern_(pattern)
+{
+    if (pattern.empty()) {
+        compiled_ = true;
+        return;
+    }
+
+    tokenize(pattern);
+    compiled_ = true;
+}
+
+// Convenience function
+bool matchesGlob(std::string_view text, const std::string& pattern, bool isWindows)
+{
+    MinimatchPattern matcher(pattern, isWindows);
+    return matcher.match(text);
+}
+
+// Static utility method implementation
+bool MinimatchPattern::hasWildcards(const std::string& pattern)
+{
+    if (pattern.empty()) {
+        return false;
+    }
+
+    for (char c : pattern) {
+        // Exclude path separators since they're not wildcards in this context
+        if (c != '/' && c != '\\' && isSpecialChar(c)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Utility function to check if a pattern contains any wildcard characters
+bool containsWildcards(const std::string& pattern)
+{
+    // Delegate to the MinimatchPattern static method
+    return MinimatchPattern::hasWildcards(pattern);
+}
+
+// Update the existing functions to use the new implementation
 static bool matchPattern(const char* str, const char* pattern, bool isWindows)
 {
-    if (!str || !pattern)
-        return false;
-
-    GlobParser parser(isWindows);
-    GlobNode ast = parser.parse(pattern);
-    return RegexMatcher::match(ast, str, isWindows);
+    return matchesGlob(str, pattern, isWindows);
 }
 
 result_t path_win32_base::matchesGlob(exlib::string path, exlib::string pattern, bool& retVal)

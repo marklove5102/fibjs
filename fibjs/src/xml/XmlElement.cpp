@@ -13,6 +13,7 @@
 #include "XmlDocument.h"
 #include "StringBuffer.h"
 #include "parse.h"
+#include <algorithm>
 
 namespace fibjs {
 
@@ -199,6 +200,11 @@ result_t XmlElement::removeChild(XmlNode_base* oldChild, obj_ptr<XmlNode_base>& 
     return m_childs->removeChild(oldChild, retVal);
 }
 
+result_t XmlElement::remove(obj_ptr<XmlNode_base>& retVal)
+{
+    return XmlNodeImpl::remove(retVal);
+}
+
 result_t XmlElement::appendChild(XmlNode_base* newChild, obj_ptr<XmlNode_base>& retVal)
 {
     return m_childs->appendChild(newChild, retVal);
@@ -227,6 +233,10 @@ result_t XmlElement::normalize()
 result_t XmlElement::get_tagName(exlib::string& retVal)
 {
     retVal = m_tagName;
+    // HTML tag names should be uppercase
+    if (!m_isXml) {
+        exlib::qstrupr(retVal);
+    }
     return 0;
 }
 
@@ -246,9 +256,6 @@ result_t XmlElement::set_id(exlib::string newVal)
 
 result_t XmlElement::get_innerHTML(exlib::string& retVal)
 {
-    if (m_isXml)
-        return CALL_E_INVALID_CALL;
-
     if (m_childs->hasChildNodes())
         m_childs->toString(retVal);
 
@@ -257,27 +264,49 @@ result_t XmlElement::get_innerHTML(exlib::string& retVal)
 
 result_t XmlElement::set_innerHTML(exlib::string newVal)
 {
-    if (m_isXml)
-        return CALL_E_INVALID_CALL;
-
     result_t hr;
 
     m_childs->removeAll();
 
-    obj_ptr<XmlDocument> doc = new XmlDocument(false);
-    hr = doc->load(newVal);
-    if (hr < 0)
-        return hr;
+    if (newVal.empty())
+        return 0;
 
-    obj_ptr<XmlElement_base> body;
-    hr = doc->get_body(body);
-    if (hr != 0)
-        return hr;
+    if (m_isXml) {
+        // For XML documents, wrap content in a root element for parsing
+        exlib::string wrappedContent = "<root>" + newVal + "</root>";
+        obj_ptr<XmlDocument> doc = new XmlDocument(true);
+        hr = doc->load(wrappedContent);
+        if (hr < 0)
+            return hr;
 
-    obj_ptr<XmlNode_base> node;
-    obj_ptr<XmlNode_base> out;
-    while (body->get_firstChild(node) == 0)
-        appendChild(node, out);
+        // Move children from document element's root
+        obj_ptr<XmlElement_base> docElement;
+        hr = doc->get_documentElement(docElement);
+        if (hr == 0 && docElement) {
+            obj_ptr<XmlNode_base> node;
+            obj_ptr<XmlNode_base> out;
+            while (docElement->get_firstChild(node) == 0) {
+                appendChild(node, out);
+            }
+        }
+    } else {
+        // For HTML documents, parse as HTML
+        obj_ptr<XmlDocument> doc = new XmlDocument(false);
+        hr = doc->load(newVal);
+        if (hr < 0)
+            return hr;
+
+        // Move children from body element
+        obj_ptr<XmlElement_base> body;
+        hr = doc->get_body(body);
+        if (hr == 0 && body) {
+            obj_ptr<XmlNode_base> node;
+            obj_ptr<XmlNode_base> out;
+            while (body->get_firstChild(node) == 0) {
+                appendChild(node, out);
+            }
+        }
+    }
 
     return 0;
 }
@@ -335,10 +364,25 @@ result_t XmlElement::getAttributeNS(exlib::string namespaceURI, exlib::string lo
     return node->get_value(retVal);
 }
 
+result_t XmlElement::getAttributeNode(exlib::string name, obj_ptr<XmlAttr_base>& retVal)
+{
+    return m_attrs->getNamedItem(name, retVal);
+}
+
+result_t XmlElement::getAttributeNodeNS(exlib::string namespaceURI, exlib::string localName, obj_ptr<XmlAttr_base>& retVal)
+{
+    return m_attrs->getNamedItemNS(namespaceURI, localName, retVal);
+}
+
 result_t XmlElement::setAttribute(exlib::string name, exlib::string value)
 {
+    // In HTML mode, normalize attribute names to lowercase
+    if (!m_isXml)
+        exlib::qstrlwr(name);
+
     obj_ptr<XmlAttr> attr = new XmlAttr(this, name, value);
-    return m_attrs->setNamedItem(attr);
+    obj_ptr<XmlAttr_base> retVal;
+    return m_attrs->setNamedItem(attr, retVal);
 }
 
 result_t XmlElement::setAttributeNS(exlib::string namespaceURI, exlib::string qualifiedName,
@@ -354,7 +398,23 @@ result_t XmlElement::setAttributeNS(exlib::string namespaceURI, exlib::string qu
     }
 
     obj_ptr<XmlAttr> attr = new XmlAttr(this, namespaceURI, qualifiedName, value);
-    return m_attrs->setNamedItem(attr);
+    obj_ptr<XmlAttr_base> retVal;
+    return m_attrs->setNamedItem(attr, retVal);
+}
+
+result_t XmlElement::setAttributeNode(XmlAttr_base* attr, obj_ptr<XmlAttr_base>& retVal)
+{
+    XmlAttr* _attr = (XmlAttr*)attr;
+    if (_attr->m_owner != NULL && _attr->m_owner != this) {
+        return Runtime::setError("The attribute already belongs to another element");
+    }
+
+    if (_attr->m_owner == this) {
+        retVal = _attr;
+        return 0;
+    }
+
+    return m_attrs->setNamedItem((XmlAttr*)attr, retVal);
 }
 
 result_t XmlElement::removeAttribute(exlib::string name)
@@ -365,6 +425,12 @@ result_t XmlElement::removeAttribute(exlib::string name)
 result_t XmlElement::removeAttributeNS(exlib::string namespaceURI, exlib::string localName)
 {
     return m_attrs->removeNamedItemNS(namespaceURI, localName);
+}
+
+result_t XmlElement::removeAttributeNode(XmlAttr_base* attr, obj_ptr<XmlAttr_base>& retVal)
+{
+    retVal = attr;
+    return m_attrs->removeNode(attr);
 }
 
 result_t XmlElement::getElementsByTagName(exlib::string tagName, obj_ptr<XmlNodeList_base>& retVal)

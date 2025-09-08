@@ -28,8 +28,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<dns_base>& retVal)
@@ -68,7 +67,7 @@ inline void dns_base::s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<NArray> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("dns.resolve");
 
     METHOD_OVER(1, 1);
 
@@ -86,7 +85,7 @@ inline void dns_base::s_static_lookup(const v8::FunctionCallbackInfo<v8::Value>&
 {
     Variant vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("dns.lookup");
 
     METHOD_OVER(2, 1);
 

@@ -33,8 +33,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<io_base>& retVal)
@@ -84,7 +83,7 @@ inline void io_base::s_static_copyStream(const v8::FunctionCallbackInfo<v8::Valu
 {
     int64_t vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("io.copyStream");
 
     METHOD_OVER(3, 2);
 
@@ -93,16 +92,16 @@ inline void io_base::s_static_copyStream(const v8::FunctionCallbackInfo<v8::Valu
     OPT_ARG(int64_t, 2, -1);
 
     if (!cb.IsEmpty())
-        hr = acb_copyStream(v0, v1, v2, cb, args);
+        hr = acb_copyStream(v0.get(), v1.get(), v2, cb, args);
     else
-        hr = ac_copyStream(v0, v1, v2, vr);
+        hr = ac_copyStream(v0.get(), v1.get(), v2, vr);
 
     METHOD_RETURN();
 }
 
 inline void io_base::s_static_bridge(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("io.bridge");
 
     METHOD_OVER(2, 2);
 
@@ -110,9 +109,9 @@ inline void io_base::s_static_bridge(const v8::FunctionCallbackInfo<v8::Value>& 
     ARG(obj_ptr<Stream_base>, 1);
 
     if (!cb.IsEmpty())
-        hr = acb_bridge(v0, v1, cb, args);
+        hr = acb_bridge(v0.get(), v1.get(), cb, args);
     else
-        hr = ac_bridge(v0, v1);
+        hr = ac_bridge(v0.get(), v1.get());
 
     METHOD_VOID();
 }

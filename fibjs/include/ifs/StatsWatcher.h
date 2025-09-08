@@ -20,11 +20,10 @@ class EventEmitter_base;
 
 class StatsWatcher_base : public EventEmitter_base {
     DECLARE_CLASS(StatsWatcher_base);
+    EVENT_SUPPORT();
 
 public:
     // StatsWatcher_base
-    virtual result_t get_onchange(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onchange(v8::Local<v8::Function> newVal) = 0;
     virtual result_t close() = 0;
     virtual result_t ref(obj_ptr<StatsWatcher_base>& retVal) = 0;
     virtual result_t unref(obj_ptr<StatsWatcher_base>& retVal) = 0;
@@ -34,8 +33,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<StatsWatcher_base>& retVal)
@@ -83,7 +81,7 @@ inline void StatsWatcher_base::s_get_onchange(const v8::FunctionCallbackInfo<v8:
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onchange(vr);
+    hr = pInst->getListener("change", vr);
 
     METHOD_RETURN();
 }
@@ -97,7 +95,7 @@ inline void StatsWatcher_base::s_set_onchange(const v8::FunctionCallbackInfo<v8:
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onchange(v0);
+    hr = pInst->setListener("change", v0);
 
     METHOD_VOID();
 }

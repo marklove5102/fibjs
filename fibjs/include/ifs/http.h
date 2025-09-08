@@ -17,13 +17,13 @@ namespace fibjs {
 
 class HttpRequest_base;
 class HttpResponse_base;
+class Headers_base;
 class HttpCookie_base;
 class HttpServer_base;
 class HttpClient_base;
 class HttpsServer_base;
 class HttpHandler_base;
 class HttpRepeater_base;
-class EventSource_base;
 class Handler_base;
 class Stream_base;
 class SeekableStream_base;
@@ -81,8 +81,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<http_base>& retVal)
@@ -145,13 +144,13 @@ public:
 
 #include "ifs/HttpRequest.h"
 #include "ifs/HttpResponse.h"
+#include "ifs/Headers.h"
 #include "ifs/HttpCookie.h"
 #include "ifs/HttpServer.h"
 #include "ifs/HttpClient.h"
 #include "ifs/HttpsServer.h"
 #include "ifs/HttpHandler.h"
 #include "ifs/HttpRepeater.h"
-#include "ifs/EventSource.h"
 #include "ifs/Handler.h"
 #include "ifs/Stream.h"
 #include "ifs/SeekableStream.h"
@@ -173,13 +172,13 @@ inline ClassInfo& http_base::class_info()
     static ClassData::ClassObject s_object[] = {
         { "Request", HttpRequest_base::class_info },
         { "Response", HttpResponse_base::class_info },
+        { "Headers", Headers_base::class_info },
         { "Cookie", HttpCookie_base::class_info },
         { "Server", HttpServer_base::class_info },
         { "Client", HttpClient_base::class_info },
         { "HttpsServer", HttpsServer_base::class_info },
         { "Handler", HttpHandler_base::class_info },
-        { "Repeater", HttpRepeater_base::class_info },
-        { "EventSource", EventSource_base::class_info }
+        { "Repeater", HttpRepeater_base::class_info }
     };
 
     static ClassData::ClassProperty s_property[] = {
@@ -622,7 +621,7 @@ inline void http_base::s_static_request(const v8::FunctionCallbackInfo<v8::Value
 {
     obj_ptr<HttpResponse_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("http.request");
 
     METHOD_OVER(2, 2);
 
@@ -630,9 +629,9 @@ inline void http_base::s_static_request(const v8::FunctionCallbackInfo<v8::Value
     ARG(obj_ptr<HttpRequest_base>, 1);
 
     if (!cb.IsEmpty())
-        hr = acb_request(v0, v1, cb, args);
+        hr = acb_request(v0.get(), v1.get(), cb, args);
     else
-        hr = ac_request(v0, v1, vr);
+        hr = ac_request(v0.get(), v1.get(), vr);
 
     METHOD_OVER(3, 3);
 
@@ -641,9 +640,9 @@ inline void http_base::s_static_request(const v8::FunctionCallbackInfo<v8::Value
     ARG(obj_ptr<SeekableStream_base>, 2);
 
     if (!cb.IsEmpty())
-        hr = acb_request(v0, v1, v2, cb, args);
+        hr = acb_request(v0.get(), v1.get(), v2.get(), cb, args);
     else
-        hr = ac_request(v0, v1, v2, vr);
+        hr = ac_request(v0.get(), v1.get(), v2.get(), vr);
 
     METHOD_OVER(3, 2);
 
@@ -682,7 +681,7 @@ inline void http_base::s_static_get(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     obj_ptr<HttpResponse_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("http.get");
 
     METHOD_OVER(2, 1);
 
@@ -701,7 +700,7 @@ inline void http_base::s_static_post(const v8::FunctionCallbackInfo<v8::Value>& 
 {
     obj_ptr<HttpResponse_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("http.post");
 
     METHOD_OVER(2, 1);
 
@@ -720,7 +719,7 @@ inline void http_base::s_static_del(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     obj_ptr<HttpResponse_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("http.del");
 
     METHOD_OVER(2, 1);
 
@@ -739,7 +738,7 @@ inline void http_base::s_static_put(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     obj_ptr<HttpResponse_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("http.put");
 
     METHOD_OVER(2, 1);
 
@@ -758,7 +757,7 @@ inline void http_base::s_static_patch(const v8::FunctionCallbackInfo<v8::Value>&
 {
     obj_ptr<HttpResponse_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("http.patch");
 
     METHOD_OVER(2, 1);
 
@@ -777,7 +776,7 @@ inline void http_base::s_static_head(const v8::FunctionCallbackInfo<v8::Value>& 
 {
     obj_ptr<HttpResponse_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("http.head");
 
     METHOD_OVER(2, 1);
 

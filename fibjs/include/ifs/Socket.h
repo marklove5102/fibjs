@@ -39,7 +39,7 @@ public:
     virtual result_t listen(int32_t backlog) = 0;
     virtual result_t accept(obj_ptr<Socket_base>& retVal, AsyncEvent* ac) = 0;
     virtual result_t recv(int32_t bytes, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac) = 0;
-    virtual result_t send(Buffer_base* data, AsyncEvent* ac) = 0;
+    virtual result_t send(Buffer_base* data, int32_t& retVal, AsyncEvent* ac) = 0;
 
 public:
     static void __new(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -65,7 +65,7 @@ public:
     ASYNC_MEMBER3(Socket_base, connect, exlib::string, int32_t, int32_t);
     ASYNC_MEMBERVALUE1(Socket_base, accept, obj_ptr<Socket_base>);
     ASYNC_MEMBERVALUE2(Socket_base, recv, int32_t, obj_ptr<Buffer_base>);
-    ASYNC_MEMBER1(Socket_base, send, Buffer_base*);
+    ASYNC_MEMBERVALUE2(Socket_base, send, Buffer_base*, int32_t);
 };
 }
 
@@ -241,7 +241,7 @@ inline void Socket_base::s_set_timeout(const v8::FunctionCallbackInfo<v8::Value>
 inline void Socket_base::s_connect(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(Socket_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("Socket.connect");
 
     METHOD_OVER(3, 2);
 
@@ -299,7 +299,7 @@ inline void Socket_base::s_accept(const v8::FunctionCallbackInfo<v8::Value>& arg
     obj_ptr<Socket_base> vr;
 
     ASYNC_METHOD_INSTANCE(Socket_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("Socket.accept");
 
     METHOD_OVER(0, 0);
 
@@ -316,7 +316,7 @@ inline void Socket_base::s_recv(const v8::FunctionCallbackInfo<v8::Value>& args)
     obj_ptr<Buffer_base> vr;
 
     ASYNC_METHOD_INSTANCE(Socket_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("Socket.recv");
 
     METHOD_OVER(1, 0);
 
@@ -332,18 +332,20 @@ inline void Socket_base::s_recv(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 inline void Socket_base::s_send(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
+    int32_t vr;
+
     ASYNC_METHOD_INSTANCE(Socket_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("Socket.send");
 
     METHOD_OVER(1, 1);
 
     ARG(obj_ptr<Buffer_base>, 0);
 
     if (!cb.IsEmpty())
-        hr = pInst->acb_send(v0, cb, args);
+        hr = pInst->acb_send(v0.get(), cb, args);
     else
-        hr = pInst->ac_send(v0);
+        hr = pInst->ac_send(v0.get(), vr);
 
-    METHOD_VOID();
+    METHOD_RETURN();
 }
 }

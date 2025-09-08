@@ -94,6 +94,7 @@ public:
     virtual result_t appendChild(XmlNode_base* newChild, obj_ptr<XmlNode_base>& retVal);
     virtual result_t replaceChild(XmlNode_base* newChild, XmlNode_base* oldChild, obj_ptr<XmlNode_base>& retVal);
     virtual result_t removeChild(XmlNode_base* oldChild, obj_ptr<XmlNode_base>& retVal);
+    virtual result_t remove(obj_ptr<XmlNode_base>& retVal);
 
 public:
     // XmlElement_base
@@ -112,16 +113,23 @@ public:
     virtual result_t get_attributes(obj_ptr<XmlNamedNodeMap_base>& retVal);
     virtual result_t getAttribute(exlib::string name, exlib::string& retVal);
     virtual result_t getAttributeNS(exlib::string namespaceURI, exlib::string localName, exlib::string& retVal);
+    virtual result_t getAttributeNode(exlib::string name, obj_ptr<XmlAttr_base>& retVal);
+    virtual result_t getAttributeNodeNS(exlib::string namespaceURI, exlib::string localName, obj_ptr<XmlAttr_base>& retVal);
     virtual result_t setAttribute(exlib::string name, exlib::string value);
     virtual result_t setAttributeNS(exlib::string namespaceURI, exlib::string qualifiedName, exlib::string value);
+    virtual result_t setAttributeNode(XmlAttr_base* attr, obj_ptr<XmlAttr_base>& retVal);
     virtual result_t removeAttribute(exlib::string name);
     virtual result_t removeAttributeNS(exlib::string namespaceURI, exlib::string localName);
+    virtual result_t removeAttributeNode(XmlAttr_base* attr, obj_ptr<XmlAttr_base>& retVal);
     virtual result_t hasAttribute(exlib::string name, bool& retVal);
     virtual result_t hasAttributeNS(exlib::string namespaceURI, exlib::string localName, bool& retVal);
     virtual result_t getElementsByTagName(exlib::string tagName, obj_ptr<XmlNodeList_base>& retVal);
     virtual result_t getElementsByTagNameNS(exlib::string namespaceURI, exlib::string localName, obj_ptr<XmlNodeList_base>& retVal);
     virtual result_t getElementById(exlib::string id, obj_ptr<XmlElement_base>& retVal);
     virtual result_t getElementsByClassName(exlib::string className, obj_ptr<XmlNodeList_base>& retVal);
+    virtual result_t querySelector(exlib::string selectors, obj_ptr<XmlElement_base>& retVal);
+    virtual result_t querySelectorAll(exlib::string selectors, obj_ptr<XmlNodeList_base>& retVal);
+    virtual result_t matches(exlib::string selectors, bool& retVal);
 
 public:
     result_t get_defaultNamespace(exlib::string& def_ns)
@@ -292,8 +300,10 @@ public:
 
     void fix_prefix(exlib::string namespaceURI, exlib::string& prefix);
 
-private:
+public:
     bool m_isXml;
+
+private:
     exlib::string m_tagName;
     exlib::string m_localName;
     exlib::string m_prefix;

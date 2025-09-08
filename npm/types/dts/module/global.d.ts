@@ -1,6 +1,11 @@
 /// <reference path="../_import/_fibjs.d.ts" />
 /// <reference path="../interface/Buffer.d.ts" />
+/// <reference path="../interface/URLSearchParams.d.ts" />
 /// <reference path="../interface/UrlObject.d.ts" />
+/// <reference path="../interface/Blob.d.ts" />
+/// <reference path="../interface/File.d.ts" />
+/// <reference path="../interface/Headers.d.ts" />
+/// <reference path="../interface/FormData.d.ts" />
 /// <reference path="../interface/TextDecoder.d.ts" />
 /// <reference path="../interface/TextEncoder.d.ts" />
 /// <reference path="../interface/AbortController.d.ts" />
@@ -11,6 +16,7 @@
 /// <reference path="../interface/PerformanceObserver.d.ts" />
 /// <reference path="../module/webcrypto.d.ts" />
 /// <reference path="../interface/Timer.d.ts" />
+/// <reference path="../interface/HttpResponse.d.ts" />
 /**
  * @description 全局对象，所有脚本均可以访问的基础对象
  */
@@ -21,9 +27,34 @@ declare module 'global' {
     const Buffer: typeof Class_Buffer;
 
     /**
+     * @description 创建一个 URLSearchParams 请求对象，参见 URLSearchParams 
+     */
+    const URLSearchParams: typeof Class_URLSearchParams;
+
+    /**
      * @description 创建一个 UrlObject 请求对象，参见 UrlObject 
      */
     const URL: typeof Class_UrlObject;
+
+    /**
+     * @description 创建一个 Blob 请求对象，参见 Blob 
+     */
+    const Blob: typeof Class_Blob;
+
+    /**
+     * @description 创建一个 File 请求对象，参见 File 
+     */
+    const File: typeof Class_File;
+
+    /**
+     * @description 创建一个 Headers 对象，参见 Headers 
+     */
+    const Headers: typeof Class_Headers;
+
+    /**
+     * @description 创建一个 FormData 对象，参见 FormData 
+     */
+    const FormData: typeof Class_FormData;
 
     /**
      * @description TextDecoder 解码对象，参见 TextDecoder 对象。
@@ -235,11 +266,10 @@ declare module 'global' {
     /**
      * @description 以 base64 方式编码数据
      * 	 @param data 要编码的数据
-     * 	 @param url 指定是否使用 url 安全字符编码
      * 	 @return 返回编码的字符串
      * 	 
      */
-    function btoa(data: Class_Buffer, url?: boolean): string;
+    function btoa(data: string): string;
 
     /**
      * @description 以 base64 方式解码字符串为二进制数据
@@ -247,7 +277,36 @@ declare module 'global' {
      * 	 @return 返回解码的二进制数据
      * 	 
      */
-    function atob(data: string): Class_Buffer;
+    function atob(data: string): string;
+
+    /**
+     * @description 请求指定的 url，并返回结果，等同于 http.request(url, ...)
+     *      opts 包含请求的附加选项，支持的内容如下：
+     *      ```JavaScript
+     *      {
+     *          "method": "GET", // specify the http request method: GET, POST, etc, default: GET.
+     *          "protocol": "http",
+     *          "slashes": true,
+     *          "username": "",
+     *          "password": "",
+     *          "hostname": "",
+     *          "port": "",
+     *          "pathname": "",
+     *          "keepAlive": unknown, // If not specified, the default settings of the client will be used.
+     *          "query": {},
+     *          "body": SeekableStream | Buffer | String | {},
+     *          "json": {},
+     *          "pack": {},
+     *          "headers": {}
+     *      }
+     *      ```
+     *      其中 body，json，pack 不得同时出现。缺省为 {}，不包含任何附加信息
+     *      @param url 指定 url，必须是包含主机的完整 url
+     *      @param opts 指定附加信息
+     *      @return 返回服务器响应
+     *      
+     */
+    function fetch(url: string, opts?: FIBJS.GeneralObject): Promise<Class_HttpResponse>;
 
 }
 

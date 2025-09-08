@@ -74,7 +74,7 @@ public:
             memcpy(pBuf, m_body_buf->data(), m_body_length);
 
         m_buffer = new Buffer(m_strBuf.c_str(), m_strBuf.length());
-        return m_stm->write(m_buffer, next(body));
+        return m_stm->write(m_buffer, m_len, next(body));
     }
 
     ON_STATE(asyncSendTo, body)
@@ -99,6 +99,7 @@ public:
     obj_ptr<Buffer_base> m_buffer;
     int64_t m_contentLength;
     int64_t m_copySize;
+    int32_t m_len;
     size_t m_body_length = 0;
     obj_ptr<Buffer> m_body_buf;
     exlib::string m_strCommand;
@@ -132,6 +133,23 @@ result_t HttpMessage::get_data(v8::Local<v8::Value>& retVal)
         return Message::pack(retVal);
 
     return Message::get_data(retVal);
+}
+
+result_t HttpMessage::text(exlib::string data, exlib::string& retVal)
+{
+    return Message::text(data, retVal);
+}
+
+result_t HttpMessage::text(exlib::string& retVal)
+{
+    // exlib::string strType;
+
+    // if (firstHeader("Content-Type", strType) != CALL_RETURN_NULL) {
+    //     if (strType.find("text") == exlib::string::npos)
+    //         return CHECK_ERROR(Runtime::setError("HttpMessage: Invalid content type."));
+    // }
+
+    return Message::text(retVal);
 }
 
 result_t HttpMessage::json(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal)
@@ -227,7 +245,7 @@ result_t HttpMessage::readHeader(Stream_base* stm, AsyncEvent* ac)
                         return CHECK_ERROR(Runtime::setError("HttpMessage: body is too huge."));
 
                     if (m_pThis->m_bNoBody) {
-                        result_t hr = m_pThis->addHeader(m_strLine);
+                        result_t hr = m_pThis->appendHeader(m_strLine);
                         if (hr < 0)
                             return hr;
 
@@ -244,7 +262,7 @@ result_t HttpMessage::readHeader(Stream_base* stm, AsyncEvent* ac)
 
                     m_pThis->m_bChunked = true;
                 } else {
-                    result_t hr = m_pThis->addHeader(m_strLine);
+                    result_t hr = m_pThis->appendHeader(m_strLine);
                     if (hr < 0)
                         return hr;
 
@@ -378,7 +396,7 @@ result_t HttpMessage::readFrom(Stream_base* stm, AsyncEvent* ac)
     return (new asyncReadFrom(this, stm, ac))->post(0);
 }
 
-void HttpMessage::addHeader(const char* name, int32_t szName, const char* value,
+void HttpMessage::appendHeader(const char* name, int32_t szName, const char* value,
     int32_t szValue)
 {
     if (szName == 10 && !qstricmp(name, "connection", szName)) {
@@ -388,10 +406,10 @@ void HttpMessage::addHeader(const char* name, int32_t szName, const char* value,
         } else
             m_keepAlive = !!qstristr(value, "keep-alive");
     } else
-        m_headers->add(name, szName, value, szValue);
+        m_headers->append_string(name, szName, value, szValue);
 }
 
-result_t HttpMessage::addHeader(exlib::string& strLine)
+result_t HttpMessage::appendHeader(exlib::string& strLine)
 {
     int32_t p2;
     _parser p(strLine);
@@ -402,7 +420,7 @@ result_t HttpMessage::addHeader(exlib::string& strLine)
         return CHECK_ERROR(Runtime::setError("HttpMessage: bad header: " + strLine));
 
     p.skipSpace();
-    addHeader(p.string, p2, p.now(), p.left());
+    appendHeader(p.string, p2, p.now(), p.left());
 
     return 0;
 }
@@ -508,7 +526,7 @@ result_t HttpMessage::set_protocol(exlib::string newVal)
     return 0;
 }
 
-result_t HttpMessage::get_headers(obj_ptr<HttpCollection_base>& retVal)
+result_t HttpMessage::get_headers(obj_ptr<Headers_base>& retVal)
 {
     retVal = m_headers;
     return 0;
@@ -608,7 +626,7 @@ result_t HttpMessage::hasHeader(exlib::string name, bool& retVal)
 
 result_t HttpMessage::firstHeader(exlib::string name, exlib::string& retVal)
 {
-    return m_headers->first(name, retVal);
+    return m_headers->first_string(name, retVal);
 }
 
 result_t HttpMessage::allHeader(exlib::string name, obj_ptr<NObject>& retVal)
@@ -616,19 +634,19 @@ result_t HttpMessage::allHeader(exlib::string name, obj_ptr<NObject>& retVal)
     return m_headers->all(name, retVal);
 }
 
-result_t HttpMessage::addHeader(v8::Local<v8::Object> map)
+result_t HttpMessage::appendHeader(v8::Local<v8::Object> map)
 {
-    return m_headers->add(map);
+    return m_headers->append(map);
 }
 
-result_t HttpMessage::addHeader(exlib::string name, exlib::string value)
+result_t HttpMessage::appendHeader(exlib::string name, exlib::string value)
 {
-    return m_headers->add(name, value);
+    return m_headers->append(name, value);
 }
 
-result_t HttpMessage::addHeader(exlib::string name, v8::Local<v8::Array> values)
+result_t HttpMessage::appendHeader(exlib::string name, v8::Local<v8::Array> values)
 {
-    return m_headers->add(name, values);
+    return m_headers->append(name, values);
 }
 
 result_t HttpMessage::setHeader(v8::Local<v8::Object> map)

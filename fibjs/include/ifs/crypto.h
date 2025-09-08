@@ -25,6 +25,7 @@ class Sign_base;
 class Verify_base;
 class X509CertificateRequest_base;
 class webcrypto_base;
+class subtle_base;
 
 class crypto_base : public object_base {
     DECLARE_CLASS(crypto_base);
@@ -118,8 +119,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<crypto_base>& retVal)
@@ -197,6 +197,7 @@ public:
 #include "ifs/Verify.h"
 #include "ifs/X509CertificateRequest.h"
 #include "ifs/webcrypto.h"
+#include "ifs/subtle.h"
 
 namespace fibjs {
 inline ClassInfo& crypto_base::class_info()
@@ -241,7 +242,8 @@ inline ClassInfo& crypto_base::class_info()
         { "constants", crypto_constants_base::class_info },
         { "KeyObject", KeyObject_base::class_info },
         { "X509Certificate", X509Certificate_base::class_info },
-        { "webcrypto", webcrypto_base::class_info }
+        { "webcrypto", webcrypto_base::class_info },
+        { "subtle", subtle_base::class_info }
     };
 
     static ClassData s_cd = {
@@ -294,7 +296,7 @@ inline void crypto_base::s_static_createHmac(const v8::FunctionCallbackInfo<v8::
     ARG(exlib::string, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = createHmac(v0, v1, vr);
+    hr = createHmac(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -324,7 +326,7 @@ inline void crypto_base::s_static_createCipher(const v8::FunctionCallbackInfo<v8
     ARG(obj_ptr<Buffer_base>, 1);
     OPT_ARG(v8::Local<v8::Object>, 2, v8::Object::New(isolate->m_isolate));
 
-    hr = createCipher(v0, v1, v2, vr);
+    hr = createCipher(v0, v1.get(), v2, vr);
 
     METHOD_RETURN();
 }
@@ -342,7 +344,7 @@ inline void crypto_base::s_static_createCipheriv(const v8::FunctionCallbackInfo<
     ARG(obj_ptr<Buffer_base>, 2);
     OPT_ARG(v8::Local<v8::Object>, 3, v8::Object::New(isolate->m_isolate));
 
-    hr = createCipheriv(v0, v1, v2, v3, vr);
+    hr = createCipheriv(v0, v1.get(), v2.get(), v3, vr);
 
     METHOD_OVER(4, 3);
 
@@ -351,7 +353,7 @@ inline void crypto_base::s_static_createCipheriv(const v8::FunctionCallbackInfo<
     ARG(obj_ptr<Buffer_base>, 2);
     OPT_ARG(v8::Local<v8::Object>, 3, v8::Object::New(isolate->m_isolate));
 
-    hr = createCipheriv(v0, v1, v2, v3, vr);
+    hr = createCipheriv(v0, v1.get(), v2.get(), v3, vr);
 
     METHOD_RETURN();
 }
@@ -368,7 +370,7 @@ inline void crypto_base::s_static_createDecipher(const v8::FunctionCallbackInfo<
     ARG(obj_ptr<Buffer_base>, 1);
     OPT_ARG(v8::Local<v8::Object>, 2, v8::Object::New(isolate->m_isolate));
 
-    hr = createDecipher(v0, v1, v2, vr);
+    hr = createDecipher(v0, v1.get(), v2, vr);
 
     METHOD_RETURN();
 }
@@ -386,7 +388,7 @@ inline void crypto_base::s_static_createDecipheriv(const v8::FunctionCallbackInf
     ARG(obj_ptr<Buffer_base>, 2);
     OPT_ARG(v8::Local<v8::Object>, 3, v8::Object::New(isolate->m_isolate));
 
-    hr = createDecipheriv(v0, v1, v2, v3, vr);
+    hr = createDecipheriv(v0, v1.get(), v2.get(), v3, vr);
 
     METHOD_OVER(4, 3);
 
@@ -395,7 +397,7 @@ inline void crypto_base::s_static_createDecipheriv(const v8::FunctionCallbackInf
     ARG(obj_ptr<Buffer_base>, 2);
     OPT_ARG(v8::Local<v8::Object>, 3, v8::Object::New(isolate->m_isolate));
 
-    hr = createDecipheriv(v0, v1, v2, v3, vr);
+    hr = createDecipheriv(v0, v1.get(), v2.get(), v3, vr);
 
     METHOD_RETURN();
 }
@@ -423,7 +425,7 @@ inline void crypto_base::s_static_createPrivateKey(const v8::FunctionCallbackInf
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = createPrivateKey(v0, vr);
+    hr = createPrivateKey(v0.get(), vr);
 
     METHOD_OVER(1, 1);
 
@@ -444,13 +446,13 @@ inline void crypto_base::s_static_createPublicKey(const v8::FunctionCallbackInfo
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = createPublicKey(v0, vr);
+    hr = createPublicKey(v0.get(), vr);
 
     METHOD_OVER(1, 1);
 
     ARG(obj_ptr<KeyObject_base>, 0);
 
-    hr = createPublicKey(v0, vr);
+    hr = createPublicKey(v0.get(), vr);
 
     METHOD_OVER(1, 1);
 
@@ -504,7 +506,7 @@ inline void crypto_base::s_static_createSecretKey(const v8::FunctionCallbackInfo
     ARG(obj_ptr<Buffer_base>, 0);
     OPT_ARG(exlib::string, 1, "buffer");
 
-    hr = createSecretKey(v0, v1, vr);
+    hr = createSecretKey(v0.get(), v1, vr);
 
     METHOD_OVER(2, 2);
 
@@ -526,7 +528,7 @@ inline void crypto_base::s_static_createCertificateRequest(const v8::FunctionCal
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = createCertificateRequest(v0, vr);
+    hr = createCertificateRequest(v0.get(), vr);
 
     METHOD_OVER(1, 1);
 
@@ -564,7 +566,7 @@ inline void crypto_base::s_static_hash(const v8::FunctionCallbackInfo<v8::Value>
     ARG(obj_ptr<Buffer_base>, 1);
     OPT_ARG(exlib::string, 2, "hex");
 
-    hr = hash(v0, v1, v2, vr);
+    hr = hash(v0, v1.get(), v2, vr);
 
     METHOD_RETURN();
 }
@@ -573,7 +575,7 @@ inline void crypto_base::s_static_randomBytes(const v8::FunctionCallbackInfo<v8:
 {
     obj_ptr<Buffer_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.randomBytes");
 
     METHOD_OVER(1, 0);
 
@@ -591,7 +593,7 @@ inline void crypto_base::s_static_randomFill(const v8::FunctionCallbackInfo<v8::
 {
     obj_ptr<Buffer_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.randomFill");
 
     METHOD_OVER(3, 1);
 
@@ -600,9 +602,9 @@ inline void crypto_base::s_static_randomFill(const v8::FunctionCallbackInfo<v8::
     OPT_ARG(int32_t, 2, -1);
 
     if (!cb.IsEmpty())
-        hr = acb_randomFill(v0, v1, v2, cb, args);
+        hr = acb_randomFill(v0.get(), v1, v2, cb, args);
     else
-        hr = ac_randomFill(v0, v1, v2, vr);
+        hr = ac_randomFill(v0.get(), v1, v2, vr);
 
     METHOD_RETURN();
 }
@@ -611,7 +613,7 @@ inline void crypto_base::s_static_generateKeyPair(const v8::FunctionCallbackInfo
 {
     obj_ptr<GenerateKeyPairType> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.generateKeyPair");
 
     METHOD_OVER(2, 1);
 
@@ -630,7 +632,7 @@ inline void crypto_base::s_static_hkdf(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<Buffer_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.hkdf");
 
     METHOD_OVER(5, 5);
 
@@ -641,9 +643,9 @@ inline void crypto_base::s_static_hkdf(const v8::FunctionCallbackInfo<v8::Value>
     ARG(int32_t, 4);
 
     if (!cb.IsEmpty())
-        hr = acb_hkdf(v0, v1, v2, v3, v4, cb, args);
+        hr = acb_hkdf(v0, v1.get(), v2.get(), v3.get(), v4, cb, args);
     else
-        hr = ac_hkdf(v0, v1, v2, v3, v4, vr);
+        hr = ac_hkdf(v0, v1.get(), v2.get(), v3.get(), v4, vr);
 
     METHOD_RETURN();
 }
@@ -652,7 +654,7 @@ inline void crypto_base::s_static_pbkdf2(const v8::FunctionCallbackInfo<v8::Valu
 {
     obj_ptr<Buffer_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.pbkdf2");
 
     METHOD_OVER(5, 5);
 
@@ -663,9 +665,9 @@ inline void crypto_base::s_static_pbkdf2(const v8::FunctionCallbackInfo<v8::Valu
     ARG(exlib::string, 4);
 
     if (!cb.IsEmpty())
-        hr = acb_pbkdf2(v0, v1, v2, v3, v4, cb, args);
+        hr = acb_pbkdf2(v0.get(), v1.get(), v2, v3, v4, cb, args);
     else
-        hr = ac_pbkdf2(v0, v1, v2, v3, v4, vr);
+        hr = ac_pbkdf2(v0.get(), v1.get(), v2, v3, v4, vr);
 
     METHOD_RETURN();
 }
@@ -681,14 +683,14 @@ inline void crypto_base::s_static_privateDecrypt(const v8::FunctionCallbackInfo<
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = privateDecrypt(v0, v1, vr);
+    hr = privateDecrypt(v0.get(), v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
     ARG(obj_ptr<KeyObject_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = privateDecrypt(v0, v1, vr);
+    hr = privateDecrypt(v0.get(), v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
@@ -711,14 +713,14 @@ inline void crypto_base::s_static_privateEncrypt(const v8::FunctionCallbackInfo<
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = privateEncrypt(v0, v1, vr);
+    hr = privateEncrypt(v0.get(), v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
     ARG(obj_ptr<KeyObject_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = privateEncrypt(v0, v1, vr);
+    hr = privateEncrypt(v0.get(), v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
@@ -741,14 +743,14 @@ inline void crypto_base::s_static_publicDecrypt(const v8::FunctionCallbackInfo<v
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = publicDecrypt(v0, v1, vr);
+    hr = publicDecrypt(v0.get(), v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
     ARG(obj_ptr<KeyObject_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = publicDecrypt(v0, v1, vr);
+    hr = publicDecrypt(v0.get(), v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
@@ -771,14 +773,14 @@ inline void crypto_base::s_static_publicEncrypt(const v8::FunctionCallbackInfo<v
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = publicEncrypt(v0, v1, vr);
+    hr = publicEncrypt(v0.get(), v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
     ARG(obj_ptr<KeyObject_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = publicEncrypt(v0, v1, vr);
+    hr = publicEncrypt(v0.get(), v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
@@ -794,7 +796,7 @@ inline void crypto_base::s_static_sign(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<Buffer_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.sign");
 
     METHOD_OVER(3, 3);
 
@@ -803,9 +805,9 @@ inline void crypto_base::s_static_sign(const v8::FunctionCallbackInfo<v8::Value>
     ARG(obj_ptr<Buffer_base>, 2);
 
     if (!cb.IsEmpty())
-        hr = acb_sign(v0, v1, v2, cb, args);
+        hr = acb_sign(v0, v1.get(), v2.get(), cb, args);
     else
-        hr = ac_sign(v0, v1, v2, vr);
+        hr = ac_sign(v0, v1.get(), v2.get(), vr);
 
     METHOD_OVER(3, 3);
 
@@ -814,9 +816,9 @@ inline void crypto_base::s_static_sign(const v8::FunctionCallbackInfo<v8::Value>
     ARG(obj_ptr<KeyObject_base>, 2);
 
     if (!cb.IsEmpty())
-        hr = acb_sign(v0, v1, v2, cb, args);
+        hr = acb_sign(v0, v1.get(), v2.get(), cb, args);
     else
-        hr = ac_sign(v0, v1, v2, vr);
+        hr = ac_sign(v0, v1.get(), v2.get(), vr);
 
     METHOD_OVER(3, 3);
 
@@ -825,9 +827,9 @@ inline void crypto_base::s_static_sign(const v8::FunctionCallbackInfo<v8::Value>
     ARG(v8::Local<v8::Object>, 2);
 
     if (!cb.IsEmpty())
-        hr = acb_sign(v0, v1, v2, cb, args);
+        hr = acb_sign(v0, v1.get(), v2, cb, args);
     else
-        hr = ac_sign(v0, v1, v2, vr);
+        hr = ac_sign(v0, v1.get(), v2, vr);
 
     METHOD_RETURN();
 }
@@ -836,7 +838,7 @@ inline void crypto_base::s_static_verify(const v8::FunctionCallbackInfo<v8::Valu
 {
     bool vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.verify");
 
     METHOD_OVER(4, 4);
 
@@ -846,9 +848,9 @@ inline void crypto_base::s_static_verify(const v8::FunctionCallbackInfo<v8::Valu
     ARG(obj_ptr<Buffer_base>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_verify(v0, v1, v2, v3, cb, args);
+        hr = acb_verify(v0, v1.get(), v2.get(), v3.get(), cb, args);
     else
-        hr = ac_verify(v0, v1, v2, v3, vr);
+        hr = ac_verify(v0, v1.get(), v2.get(), v3.get(), vr);
 
     METHOD_OVER(4, 4);
 
@@ -858,9 +860,9 @@ inline void crypto_base::s_static_verify(const v8::FunctionCallbackInfo<v8::Valu
     ARG(obj_ptr<Buffer_base>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_verify(v0, v1, v2, v3, cb, args);
+        hr = acb_verify(v0, v1.get(), v2.get(), v3.get(), cb, args);
     else
-        hr = ac_verify(v0, v1, v2, v3, vr);
+        hr = ac_verify(v0, v1.get(), v2.get(), v3.get(), vr);
 
     METHOD_OVER(4, 4);
 
@@ -870,9 +872,9 @@ inline void crypto_base::s_static_verify(const v8::FunctionCallbackInfo<v8::Valu
     ARG(obj_ptr<Buffer_base>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_verify(v0, v1, v2, v3, cb, args);
+        hr = acb_verify(v0, v1.get(), v2, v3.get(), cb, args);
     else
-        hr = ac_verify(v0, v1, v2, v3, vr);
+        hr = ac_verify(v0, v1.get(), v2, v3.get(), vr);
 
     METHOD_RETURN();
 }
@@ -888,7 +890,7 @@ inline void crypto_base::s_static_timingSafeEqual(const v8::FunctionCallbackInfo
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = timingSafeEqual(v0, v1, vr);
+    hr = timingSafeEqual(v0.get(), v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -897,7 +899,7 @@ inline void crypto_base::s_static_bbsSign(const v8::FunctionCallbackInfo<v8::Val
 {
     obj_ptr<Buffer_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.bbsSign");
 
     METHOD_OVER(2, 2);
 
@@ -905,9 +907,9 @@ inline void crypto_base::s_static_bbsSign(const v8::FunctionCallbackInfo<v8::Val
     ARG(obj_ptr<Buffer_base>, 1);
 
     if (!cb.IsEmpty())
-        hr = acb_bbsSign(v0, v1, cb, args);
+        hr = acb_bbsSign(v0, v1.get(), cb, args);
     else
-        hr = ac_bbsSign(v0, v1, vr);
+        hr = ac_bbsSign(v0, v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
@@ -915,9 +917,9 @@ inline void crypto_base::s_static_bbsSign(const v8::FunctionCallbackInfo<v8::Val
     ARG(obj_ptr<KeyObject_base>, 1);
 
     if (!cb.IsEmpty())
-        hr = acb_bbsSign(v0, v1, cb, args);
+        hr = acb_bbsSign(v0, v1.get(), cb, args);
     else
-        hr = ac_bbsSign(v0, v1, vr);
+        hr = ac_bbsSign(v0, v1.get(), vr);
 
     METHOD_OVER(2, 2);
 
@@ -936,7 +938,7 @@ inline void crypto_base::s_static_bbsVerify(const v8::FunctionCallbackInfo<v8::V
 {
     bool vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.bbsVerify");
 
     METHOD_OVER(3, 3);
 
@@ -945,9 +947,9 @@ inline void crypto_base::s_static_bbsVerify(const v8::FunctionCallbackInfo<v8::V
     ARG(obj_ptr<Buffer_base>, 2);
 
     if (!cb.IsEmpty())
-        hr = acb_bbsVerify(v0, v1, v2, cb, args);
+        hr = acb_bbsVerify(v0, v1.get(), v2.get(), cb, args);
     else
-        hr = ac_bbsVerify(v0, v1, v2, vr);
+        hr = ac_bbsVerify(v0, v1.get(), v2.get(), vr);
 
     METHOD_OVER(3, 3);
 
@@ -956,9 +958,9 @@ inline void crypto_base::s_static_bbsVerify(const v8::FunctionCallbackInfo<v8::V
     ARG(obj_ptr<Buffer_base>, 2);
 
     if (!cb.IsEmpty())
-        hr = acb_bbsVerify(v0, v1, v2, cb, args);
+        hr = acb_bbsVerify(v0, v1.get(), v2.get(), cb, args);
     else
-        hr = ac_bbsVerify(v0, v1, v2, vr);
+        hr = ac_bbsVerify(v0, v1.get(), v2.get(), vr);
 
     METHOD_OVER(3, 3);
 
@@ -967,9 +969,9 @@ inline void crypto_base::s_static_bbsVerify(const v8::FunctionCallbackInfo<v8::V
     ARG(obj_ptr<Buffer_base>, 2);
 
     if (!cb.IsEmpty())
-        hr = acb_bbsVerify(v0, v1, v2, cb, args);
+        hr = acb_bbsVerify(v0, v1, v2.get(), cb, args);
     else
-        hr = ac_bbsVerify(v0, v1, v2, vr);
+        hr = ac_bbsVerify(v0, v1, v2.get(), vr);
 
     METHOD_RETURN();
 }
@@ -978,7 +980,7 @@ inline void crypto_base::s_static_proofGen(const v8::FunctionCallbackInfo<v8::Va
 {
     obj_ptr<Buffer_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.proofGen");
 
     METHOD_OVER(4, 4);
 
@@ -988,9 +990,9 @@ inline void crypto_base::s_static_proofGen(const v8::FunctionCallbackInfo<v8::Va
     ARG(obj_ptr<Buffer_base>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_proofGen(v0, v1, v2, v3, cb, args);
+        hr = acb_proofGen(v0.get(), v1, v2, v3.get(), cb, args);
     else
-        hr = ac_proofGen(v0, v1, v2, v3, vr);
+        hr = ac_proofGen(v0.get(), v1, v2, v3.get(), vr);
 
     METHOD_OVER(4, 4);
 
@@ -1000,9 +1002,9 @@ inline void crypto_base::s_static_proofGen(const v8::FunctionCallbackInfo<v8::Va
     ARG(obj_ptr<KeyObject_base>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_proofGen(v0, v1, v2, v3, cb, args);
+        hr = acb_proofGen(v0.get(), v1, v2, v3.get(), cb, args);
     else
-        hr = ac_proofGen(v0, v1, v2, v3, vr);
+        hr = ac_proofGen(v0.get(), v1, v2, v3.get(), vr);
 
     METHOD_OVER(4, 4);
 
@@ -1012,9 +1014,9 @@ inline void crypto_base::s_static_proofGen(const v8::FunctionCallbackInfo<v8::Va
     ARG(v8::Local<v8::Object>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_proofGen(v0, v1, v2, v3, cb, args);
+        hr = acb_proofGen(v0.get(), v1, v2, v3, cb, args);
     else
-        hr = ac_proofGen(v0, v1, v2, v3, vr);
+        hr = ac_proofGen(v0.get(), v1, v2, v3, vr);
 
     METHOD_RETURN();
 }
@@ -1023,7 +1025,7 @@ inline void crypto_base::s_static_proofVerify(const v8::FunctionCallbackInfo<v8:
 {
     bool vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("crypto.proofVerify");
 
     METHOD_OVER(4, 4);
 
@@ -1033,9 +1035,9 @@ inline void crypto_base::s_static_proofVerify(const v8::FunctionCallbackInfo<v8:
     ARG(obj_ptr<Buffer_base>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_proofVerify(v0, v1, v2, v3, cb, args);
+        hr = acb_proofVerify(v0, v1, v2.get(), v3.get(), cb, args);
     else
-        hr = ac_proofVerify(v0, v1, v2, v3, vr);
+        hr = ac_proofVerify(v0, v1, v2.get(), v3.get(), vr);
 
     METHOD_OVER(4, 4);
 
@@ -1045,9 +1047,9 @@ inline void crypto_base::s_static_proofVerify(const v8::FunctionCallbackInfo<v8:
     ARG(obj_ptr<Buffer_base>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_proofVerify(v0, v1, v2, v3, cb, args);
+        hr = acb_proofVerify(v0, v1, v2.get(), v3.get(), cb, args);
     else
-        hr = ac_proofVerify(v0, v1, v2, v3, vr);
+        hr = ac_proofVerify(v0, v1, v2.get(), v3.get(), vr);
 
     METHOD_OVER(4, 4);
 
@@ -1057,9 +1059,9 @@ inline void crypto_base::s_static_proofVerify(const v8::FunctionCallbackInfo<v8:
     ARG(obj_ptr<Buffer_base>, 3);
 
     if (!cb.IsEmpty())
-        hr = acb_proofVerify(v0, v1, v2, v3, cb, args);
+        hr = acb_proofVerify(v0, v1, v2, v3.get(), cb, args);
     else
-        hr = ac_proofVerify(v0, v1, v2, v3, vr);
+        hr = ac_proofVerify(v0, v1, v2, v3.get(), vr);
 
     METHOD_RETURN();
 }

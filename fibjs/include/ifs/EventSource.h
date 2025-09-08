@@ -21,30 +21,17 @@ class HttpResponse_base;
 
 class EventSource_base : public EventEmitter_base {
     DECLARE_CLASS(EventSource_base);
-
-public:
-    enum {
-        C_CONNECTING = 0,
-        C_OPEN = 1,
-        C_CLOSED = 2
-    };
+    EVENT_SUPPORT();
 
 public:
     // EventSource_base
     static result_t _new(exlib::string url, v8::Local<v8::Object> options, obj_ptr<EventSource_base>& retVal, v8::Local<v8::Object> This = v8::Local<v8::Object>());
     virtual result_t close(AsyncEvent* ac) = 0;
+    virtual result_t send(exlib::string data, v8::Local<v8::Object> options, int32_t& retVal, AsyncEvent* ac) = 0;
     virtual result_t get_readyState(int32_t& retVal) = 0;
     virtual result_t get_url(exlib::string& retVal) = 0;
     virtual result_t get_withCredentials(bool& retVal) = 0;
     virtual result_t get_response(obj_ptr<HttpResponse_base>& retVal) = 0;
-    virtual result_t get_onopen(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onopen(v8::Local<v8::Function> newVal) = 0;
-    virtual result_t get_onerror(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onerror(v8::Local<v8::Function> newVal) = 0;
-    virtual result_t get_onmessage(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onmessage(v8::Local<v8::Function> newVal) = 0;
-    virtual result_t get_onclose(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onclose(v8::Local<v8::Function> newVal) = 0;
 
 public:
     static void __new(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -53,6 +40,7 @@ public:
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_close(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_send(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_readyState(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_url(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_withCredentials(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -68,6 +56,7 @@ public:
 
 public:
     ASYNC_MEMBER0(EventSource_base, close);
+    ASYNC_MEMBERVALUE3(EventSource_base, send, exlib::string, v8::Local<v8::Object>, int32_t);
 };
 }
 
@@ -77,7 +66,8 @@ namespace fibjs {
 inline ClassInfo& EventSource_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
-        { "close", s_close, false, ClassData::ASYNC_ASYNC }
+        { "close", s_close, false, ClassData::ASYNC_ASYNC },
+        { "send", s_send, false, ClassData::ASYNC_ASYNC }
     };
 
     static ClassData::ClassProperty s_property[] = {
@@ -91,15 +81,9 @@ inline ClassInfo& EventSource_base::class_info()
         { "onclose", s_get_onclose, s_set_onclose, false }
     };
 
-    static ClassData::ClassConst s_const[] = {
-        { "CONNECTING", C_CONNECTING },
-        { "OPEN", C_OPEN },
-        { "CLOSED", C_CLOSED }
-    };
-
     static ClassData s_cd = {
         "EventSource", false, s__new, NULL,
-        ARRAYSIZE(s_method), s_method, 0, NULL, ARRAYSIZE(s_property), s_property, ARRAYSIZE(s_const), s_const, NULL, NULL,
+        ARRAYSIZE(s_method), s_method, 0, NULL, ARRAYSIZE(s_property), s_property, 0, NULL, NULL, NULL,
         &EventEmitter_base::class_info(),
         true
     };
@@ -149,7 +133,7 @@ inline result_t EventSource_base::load(Isolate* isolate, v8::Local<v8::Value> v,
 inline void EventSource_base::s_close(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(EventSource_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("EventSource.close");
 
     METHOD_OVER(0, 0);
 
@@ -159,6 +143,26 @@ inline void EventSource_base::s_close(const v8::FunctionCallbackInfo<v8::Value>&
         hr = pInst->ac_close();
 
     METHOD_VOID();
+}
+
+inline void EventSource_base::s_send(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    int32_t vr;
+
+    ASYNC_METHOD_INSTANCE(EventSource_base);
+    ASYNC_METHOD_ENTER("EventSource.send");
+
+    METHOD_OVER(2, 1);
+
+    ARG(exlib::string, 0);
+    OPT_ARG(v8::Local<v8::Object>, 1, v8::Object::New(isolate->m_isolate));
+
+    if (!cb.IsEmpty())
+        hr = pInst->acb_send(v0, v1, cb, args);
+    else
+        hr = pInst->ac_send(v0, v1, vr);
+
+    METHOD_RETURN();
 }
 
 inline void EventSource_base::s_get_readyState(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -226,7 +230,7 @@ inline void EventSource_base::s_get_onopen(const v8::FunctionCallbackInfo<v8::Va
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onopen(vr);
+    hr = pInst->getListener("open", vr);
 
     METHOD_RETURN();
 }
@@ -240,7 +244,7 @@ inline void EventSource_base::s_set_onopen(const v8::FunctionCallbackInfo<v8::Va
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onopen(v0);
+    hr = pInst->setListener("open", v0);
 
     METHOD_VOID();
 }
@@ -254,7 +258,7 @@ inline void EventSource_base::s_get_onerror(const v8::FunctionCallbackInfo<v8::V
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onerror(vr);
+    hr = pInst->getListener("error", vr);
 
     METHOD_RETURN();
 }
@@ -268,7 +272,7 @@ inline void EventSource_base::s_set_onerror(const v8::FunctionCallbackInfo<v8::V
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onerror(v0);
+    hr = pInst->setListener("error", v0);
 
     METHOD_VOID();
 }
@@ -282,7 +286,7 @@ inline void EventSource_base::s_get_onmessage(const v8::FunctionCallbackInfo<v8:
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onmessage(vr);
+    hr = pInst->getListener("message", vr);
 
     METHOD_RETURN();
 }
@@ -296,7 +300,7 @@ inline void EventSource_base::s_set_onmessage(const v8::FunctionCallbackInfo<v8:
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onmessage(v0);
+    hr = pInst->setListener("message", v0);
 
     METHOD_VOID();
 }
@@ -310,7 +314,7 @@ inline void EventSource_base::s_get_onclose(const v8::FunctionCallbackInfo<v8::V
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onclose(vr);
+    hr = pInst->getListener("close", vr);
 
     METHOD_RETURN();
 }
@@ -324,7 +328,7 @@ inline void EventSource_base::s_set_onclose(const v8::FunctionCallbackInfo<v8::V
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onclose(v0);
+    hr = pInst->setListener("close", v0);
 
     METHOD_VOID();
 }

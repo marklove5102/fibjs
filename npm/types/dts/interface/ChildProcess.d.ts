@@ -23,7 +23,7 @@ declare class Class_ChildProcess extends Class_EventEmitter {
      *       @param signal 传递的信号
      *      
      */
-    kill(signal: string): void;
+    kill(signal?: string): void;
 
     /**
      * @description 等待当前对象指向的进程结束，并返回进程结束代码
@@ -52,6 +52,24 @@ declare class Class_ChildProcess extends Class_EventEmitter {
     send(msg: any): void;
 
     /**
+     * @description 调整当前子进程的终端大小
+     *      @param cols 终端的列数
+     *      @param rows 终端的行数
+     *     
+     */
+    resize(cols: number, rows: number): void;
+
+    /**
+     * @description 查询当前终端的列数 
+     */
+    readonly cols: number;
+
+    /**
+     * @description 查询当前终端的行数 
+     */
+    readonly rows: number;
+
+    /**
      * @description 查询当前进程占用的内存和花费的时间
      * 
      *      内存报告生成类似以下结果：
@@ -76,6 +94,11 @@ declare class Class_ChildProcess extends Class_EventEmitter {
      *      
      */
     readonly pid: number;
+
+    /**
+     * @description 查询当前对象指向的进程是否已经退出 
+     */
+    readonly killed: boolean;
 
     /**
      * @description 查询和设置当前进程的退出码 
@@ -103,12 +126,36 @@ declare class Class_ChildProcess extends Class_EventEmitter {
     /**
      * @description 查询和绑定进程退出事件，相当于 on("exit", func); 
      */
-    onexit: (...args: any[])=>any;
+    on(event: "exit", listener: ()=>void): this;
 
     /**
      * @description 查询和绑定子进程消息事件，相当于 on("message", func); 
      */
-    onmessage: (...args: any[])=>any;
+    on(event: "message", listener: ()=>void): this;
+
+    /**
+     * @description 查询和绑定子进程启动事件，相当于 on("spawn", func); 
+     */
+    on(event: "spawn", listener: ()=>void): this;
+
+    /**
+     * @description 查询和绑定子进程断开连接事件，相当于 on("disconnect", func); 
+     */
+    on(event: "disconnect", listener: ()=>void): this;
+
+    /**
+     * @description 维持 fibjs 进程不退出，在对象绑定期间阻止 fibjs 进程退出
+     *      @return 返回当前对象
+     *     
+     */
+    ref(): Class_ChildProcess;
+
+    /**
+     * @description 允许 fibjs 进程退出，在对象绑定期间允许 fibjs 进程退出
+     *      @return 返回当前对象
+     *     
+     */
+    unref(): Class_ChildProcess;
 
 }
 

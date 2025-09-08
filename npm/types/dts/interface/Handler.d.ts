@@ -9,7 +9,7 @@ declare class Class_Handler extends Class_object {
      *      @param hdlrs 处理器数组
      *      
      */
-    constructor(hdlrs: Class_Handler);
+    constructor(hdlrs: Class_Handler[]);
 
     /**
      * @description 创建一个消息处理器路由对象
@@ -31,6 +31,13 @@ declare class Class_Handler extends Class_object {
      *      
      */
     constructor(hdlr: string);
+
+    /**
+     * @description 查询当前处理器是否支持路由
+     *      @return 返回当前处理器是否支持路由
+     *      
+     */
+    isRouting(): boolean;
 
     /**
      * @description 处理一个消息或对象

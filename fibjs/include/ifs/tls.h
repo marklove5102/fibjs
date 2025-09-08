@@ -38,8 +38,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<tls_base>& retVal)
@@ -131,7 +130,7 @@ inline void tls_base::s_static_connect(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<Stream_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("tls.connect");
 
     METHOD_OVER(2, 1);
 
@@ -150,9 +149,9 @@ inline void tls_base::s_static_connect(const v8::FunctionCallbackInfo<v8::Value>
     OPT_ARG(int32_t, 2, 0);
 
     if (!cb.IsEmpty())
-        hr = acb_connect(v0, v1, v2, cb, args);
+        hr = acb_connect(v0, v1.get(), v2, cb, args);
     else
-        hr = ac_connect(v0, v1, v2, vr);
+        hr = ac_connect(v0, v1.get(), v2, vr);
 
     METHOD_OVER(2, 2);
 

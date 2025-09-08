@@ -4,8 +4,23 @@ module global
     /*! @brief 二进制数据缓存对象，用于 io 读写的数据处理，参见 Buffer 对象。*/
     static Buffer;
 
+    /*! @brief 创建一个 URLSearchParams 请求对象，参见 URLSearchParams */
+    static URLSearchParams;
+
     /*! @brief 创建一个 UrlObject 请求对象，参见 UrlObject */
     static UrlObject new URL();
+
+    /*! @brief 创建一个 Blob 请求对象，参见 Blob */
+    static Blob;
+
+    /*! @brief 创建一个 File 请求对象，参见 File */
+    static File;
+
+    /*! @brief 创建一个 Headers 对象，参见 Headers */
+    static Headers;
+
+    /*! @brief 创建一个 FormData 对象，参见 FormData */
+    static FormData;
 
     /*! @brief TextDecoder 解码对象，参见 TextDecoder 对象。*/
     static TextDecoder;
@@ -174,14 +189,40 @@ module global
 
     /*! @brief 以 base64 方式编码数据
 	 @param data 要编码的数据
-	 @param url 指定是否使用 url 安全字符编码
 	 @return 返回编码的字符串
 	 */
-    static String btoa(Buffer data, Boolean url = false);
+    static String btoa(String data);
 
     /*! @brief 以 base64 方式解码字符串为二进制数据
 	 @param data 要解码的字符串
 	 @return 返回解码的二进制数据
 	 */
-    static Buffer atob(String data);
+    static String atob(String data);
+
+    /*! @brief 请求指定的 url，并返回结果，等同于 http.request(url, ...)
+     opts 包含请求的附加选项，支持的内容如下：
+     ```JavaScript
+     {
+         "method": "GET", // specify the http request method: GET, POST, etc, default: GET.
+         "protocol": "http",
+         "slashes": true,
+         "username": "",
+         "password": "",
+         "hostname": "",
+         "port": "",
+         "pathname": "",
+         "keepAlive": unknown, // If not specified, the default settings of the client will be used.
+         "query": {},
+         "body": SeekableStream | Buffer | String | {},
+         "json": {},
+         "pack": {},
+         "headers": {}
+     }
+     ```
+     其中 body，json，pack 不得同时出现。缺省为 {}，不包含任何附加信息
+     @param url 指定 url，必须是包含主机的完整 url
+     @param opts 指定附加信息
+     @return 返回服务器响应
+     */
+    static HttpResponse fetch(String url, Object opts = {}) promise;
 };

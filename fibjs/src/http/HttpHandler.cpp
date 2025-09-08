@@ -609,6 +609,12 @@ HttpHandler::HttpHandler()
     m_serverName.append(fibjs_version);
 }
 
+result_t HttpHandler::isRouting(bool& retVal)
+{
+    retVal = false;
+    return 0;
+}
+
 result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
     AsyncEvent* ac)
 {
@@ -707,7 +713,7 @@ result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
                 return next(end);
 
             if (m_rep->firstHeader("Server", str) == CALL_RETURN_NULL)
-                m_rep->addHeader("Server", m_pThis->m_serverName);
+                m_rep->appendHeader("Server", m_pThis->m_serverName);
 
             d.now();
 
@@ -715,8 +721,8 @@ result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             if (s == 200 && !m_options) {
                 m_rep->hasHeader("Last-Modified", t);
                 if (!t && (m_rep->firstHeader("Cache-Control", str) == CALL_RETURN_NULL)) {
-                    m_rep->addHeader("Cache-Control", "no-cache, no-store");
-                    m_rep->addHeader("Expires", "-1");
+                    m_rep->appendHeader("Cache-Control", "no-cache, no-store");
+                    m_rep->appendHeader("Expires", "-1");
                 }
             }
 
@@ -726,7 +732,7 @@ result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             if (headOnly) {
                 m_rep->set_keepAlive(false);
 
-                return m_rep.As<HttpResponse>()->sendHeader(m_stm, next(end));
+                return m_rep.As<HttpResponse>()->sendHeader(m_stm, true, next(end));
             }
 
             int64_t len;
@@ -761,7 +767,7 @@ result_t HttpHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
                     }
 
                     if (type != 0) {
-                        m_rep->addHeader("Content-Encoding", type == 1 ? "gzip" : "deflate");
+                        m_rep->appendHeader("Content-Encoding", type == 1 ? "gzip" : "deflate");
 
                         m_rep->get_body(m_body);
                         m_body->rewind();

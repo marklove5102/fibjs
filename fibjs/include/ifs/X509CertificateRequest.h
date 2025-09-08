@@ -38,8 +38,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<X509CertificateRequest_base>& retVal)
@@ -184,7 +183,7 @@ inline void X509CertificateRequest_base::s_checkPrivateKey(const v8::FunctionCal
 
     ARG(obj_ptr<KeyObject_base>, 0);
 
-    hr = pInst->checkPrivateKey(v0, vr);
+    hr = pInst->checkPrivateKey(v0.get(), vr);
 
     METHOD_RETURN();
 }

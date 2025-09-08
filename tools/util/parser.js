@@ -4,7 +4,7 @@ var path = require("path");
 
 var _ppegjs = path.resolve(__dirname, './idl-def.pegjs')
 
-var grammar = fs.readTextFile(_ppegjs);
+var grammar = fs.readFileSync(_ppegjs, 'utf8');
 
 var parser = peg.generate(grammar);
 
@@ -97,20 +97,28 @@ function parser_comment(comment) {
 module.exports = function (baseFolder, defs) {
   var defs1 = {};
   var collect = {};
+  
+  const files = fs.readdirSync(baseFolder).sort();
+  const idlFiles = files.filter(f => path.extname(f) === '.idl');
 
-  fs.readdir(baseFolder).sort().forEach(f => {
+  let parsedCount = 0;
+
+  files.forEach(f => {
     if (f === 'collect.json') {
       f = path.join(baseFolder, f);
-      collect = JSON.parse(fs.readTextFile(f));
+      collect = JSON.parse(fs.readFileSync(f, 'utf8'));
     } else if (path.extname(f) == '.idl') {
       f = path.join(baseFolder, f);
-      var def = parser.parse(fs.readTextFile(f));
+      var def = parser.parse(fs.readFileSync(f, 'utf8'));
 
       def.declare.doc = parser_comment(def.declare.comments);
-      for (var m in def.members)
+      for (var m in def.members) {
         def.members[m].doc = parser_comment(def.members[m].comments);
+        def.members[m].sourceClass = def.declare.name; // Mark with the class where it's defined
+      }
 
       defs1[def.declare.name] = def;
+      parsedCount++;
     }
   });
 
@@ -118,9 +126,13 @@ module.exports = function (baseFolder, defs) {
   for (var g in collect) {
     collect[g].forEach(n => {
       var def = defs1[n];
-      def.collect = g;
-      defs2[n] = def;
-      delete defs1[n];
+      if (def) {
+        def.collect = g;
+        defs2[n] = def;
+        delete defs1[n];
+      } else {
+        console.warn(`Warning: collect.json references '${n}' but no corresponding .idl file found`);
+      }
     });
   }
 

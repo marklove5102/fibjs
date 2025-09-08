@@ -99,8 +99,10 @@ ChildProcess::Ipc::Ipc(Isolate* _isolate, v8::Local<v8::Object> _o, obj_ptr<Stre
 
         ON_STATE(asyncRead, event)
         {
-            if (n == CALL_RETURN_NULL)
+            if (n == CALL_RETURN_NULL) {
+                m_this->m_stream->_emit("close");
                 return next();
+            }
 
             m_this->m_isolate->sync([msg = new EventMessage(m_this, m_line)]() -> int {
                 return msg->emit();
@@ -127,7 +129,8 @@ result_t ChildProcess::Ipc::send(Stream_base* stream, v8::Local<v8::Value> msg)
 
     s.append(1, '\n');
     obj_ptr<Buffer> data = new Buffer(s.c_str(), s.length());
-    return stream->ac_write(data);
+    int32_t len;
+    return stream->ac_write(data, len);
 }
 
 result_t ChildProcess::Ipc::sync_delete(Ipc* pThis)

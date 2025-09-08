@@ -3,6 +3,7 @@
 /// <reference path="../module/coroutine.d.ts" />
 /// <reference path="../module/global.d.ts" />
 /// <reference path="../module/gui.d.ts" />
+/// <reference path="../module/module.d.ts" />
 /// <reference path="../module/os.d.ts" />
 /// <reference path="../module/process.d.ts" />
 /// <reference path="../module/timers.d.ts" />
@@ -59,6 +60,7 @@
 /// <reference path="../module/crypto_constants.d.ts" />
 /// <reference path="../module/zlib_constants.d.ts" />
 /// <reference path="../module/assert_strict.d.ts" />
+/// <reference path="../module/sse.d.ts" />
 declare module '@fibjs/types/bridge' {
 }
 

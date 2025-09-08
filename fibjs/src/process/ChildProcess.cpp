@@ -10,15 +10,45 @@
 #include "ifs/util.h"
 #include "ChildProcess.h"
 #include "UVStream.h"
+#include "AbortController.h"
+#include <signal.h>
+
+#ifndef _WIN32
+#include <sys/ioctl.h>
+#include <termios.h>
+#endif
 
 namespace fibjs {
 
 void ChildProcess::on_uv_close(uv_handle_t* handle)
 {
     ChildProcess* cp = container_of(handle, ChildProcess, m_process);
-
+    cp->on_handle_close();
     cp->isolate_unref();
-    cp->m_vholder.Release();
+}
+
+void ChildProcess::on_handle_close()
+{
+    if (m_handle_count.fetch_sub(1) == 1) {
+        Variant args[2];
+
+        args[0] = m_exitCode;
+        if (m_exitCode < 0) {
+            args[1] = signo_string(-m_exitCode);
+        } else {
+            args[1].setNull();
+        }
+
+        // Clean up PTY resources on Windows
+#ifdef _WIN32
+        if (m_pty) {
+            pty_cleanup(&m_process);
+        }
+#endif
+
+        _emit("close", args, 2);
+        m_vholder.Release();
+    }
 }
 
 void ChildProcess::OnExit(uv_process_t* handle, int64_t exit_status, int term_signal)
@@ -36,15 +66,30 @@ void ChildProcess::OnExit(uv_process_t* handle, int64_t exit_status, int term_si
     cp->m_exitCode = (int32_t)exit_status;
     cp->m_ev.set();
 
+    Isolate* isolate = cp->holder();
+    isolate->sync([cp]() -> int {
+        for (int32_t i = 0; i < 4; i++) {
+            if (cp->m_stdio[i]) {
+                cp->m_stdio[i].Release();
+            }
+        }
+
+        return 0;
+    });
+
     cp->_emit("exit", args, 2);
     uv_close((uv_handle_t*)handle, on_uv_close);
 }
 
 result_t ChildProcess::create_pipe(int32_t idx)
 {
-    result_t hr = UVStream::create_pipe(m_stdio[idx], m_ipc == idx);
+    result_t hr = UVStream::create_pipe(m_stdio[idx], m_ipc == idx, [this](int32_t fd) -> void {
+        on_handle_close();
+    });
     if (hr < 0)
         return hr;
+
+    m_handle_count.fetch_add(1);
 
     stdios[idx].flags = (uv_stdio_flags)(UV_CREATE_PIPE | UV_READABLE_PIPE | UV_WRITABLE_PIPE);
     stdios[idx].data.stream = (uv_stream_t*)&m_stdio[idx]->m_pipe;
@@ -90,7 +135,6 @@ result_t ChildProcess::fill_stdio(v8::Local<v8::Object> options, bool fork)
     uv_options.stdio = stdios;
     uv_options.stdio_count = 3;
 
-#ifndef _WIN32
     int32_t pty_cnt = 0;
     for (i = 0; i < 3; i++)
         if (stddefs[i].type() == Variant::VT_String && stddefs[i].string() == "pty")
@@ -114,7 +158,6 @@ result_t ChildProcess::fill_stdio(v8::Local<v8::Object> options, bool fork)
 
     if (pty_cnt > 0)
         return CHECK_ERROR(Runtime::setError("ChildProcess: every element of stdio must be \'pty\'."));
-#endif
 
     for (i = 0; i < 3; i++) {
         if (stddefs[i].type() == Variant::VT_Integer) {
@@ -179,7 +222,8 @@ result_t ChildProcess::fill_env(v8::Local<v8::Object> options)
     }
 
     v8::Local<v8::Object> opt_envs;
-    v8::Local<v8::Value> opt_envs_v = options->Get(context, isolate->NewString("env")).FromMaybe(v8::Local<v8::Value>());
+    v8::Local<v8::Value> opt_envs_v;
+    GetConfigValue(isolate, options, "env", opt_envs_v);
     if (IsEmpty(opt_envs_v)) {
         hr = process_base::get_env(opt_envs);
         if (hr < 0)
@@ -296,10 +340,12 @@ result_t ChildProcess::fill_opt(v8::Local<v8::Object> options)
     if (windowsHide)
         uv_options.flags |= UV_PROCESS_WINDOWS_HIDE;
 
+    // Parse PTY options
+    GetConfigValue(isolate, options, "cols", m_cols);
+    GetConfigValue(isolate, options, "rows", m_rows);
+
     return 0;
 }
-
-extern "C" int pty_spawn(uv_loop_t* loop, uv_process_t* process, const uv_process_options_t* options, int* terminalfd);
 result_t ChildProcess::spawn(exlib::string command, v8::Local<v8::Array> args, v8::Local<v8::Object> options, bool fork)
 {
     result_t hr;
@@ -328,20 +374,32 @@ result_t ChildProcess::spawn(exlib::string command, v8::Local<v8::Array> args, v
     hr = uv_call([&] {
         int32_t err;
 
-#ifndef _WIN32
         if (m_pty) {
-            int32_t terminalfd;
-            err = pty_spawn(s_uv_loop, &m_process, &uv_options, &terminalfd);
+            int32_t stdinfd, stdoutfd;
+            err = pty_spawn(s_uv_loop, &m_process, &uv_options, &stdinfd, &stdoutfd, m_cols, m_rows);
             if (err >= 0) {
-                UVStream::uv_pipe(m_stdio[0], terminalfd);
-                m_stdio[1] = m_stdio[0];
+                m_stdinfd = stdinfd;
+                m_stdoutfd = stdoutfd;
+
+                // Create separate streams for stdin (write-only) and stdout (read-only)
+                UVStream::uv_pipe(m_stdio[0], stdinfd, [this](int32_t fd) -> void {
+                    on_handle_close();
+                });
+                m_handle_count.fetch_add(1);
+
+                UVStream::uv_pipe(m_stdio[1], stdoutfd, [this](int32_t fd) -> void {
+                    on_handle_close();
+                });
+                m_handle_count.fetch_add(1);
             }
         } else
-#endif
             err = uv_spawn(s_uv_loop, &m_process, &uv_options);
 
         if (err < 0)
             uv_close((uv_handle_t*)&m_process, on_uv_close);
+        else {
+            _emit("spawn");
+        }
 
         return err;
     });
@@ -358,11 +416,27 @@ result_t ChildProcess::spawn(exlib::string command, v8::Local<v8::Array> args, v
         new Ipc(isolate, wrap(), m_channel);
     }
 
+    obj_ptr<AbortSignal_base> abortSignal;
+    GetConfigValue(isolate, options, "signal", abortSignal);
+    if (abortSignal) {
+        AbortSignal* signal = abortSignal.As<AbortSignal>();
+        if (signal->is_aborted()) {
+            kill("SIGTERM");
+        } else {
+            this->Ref();
+            signal->addAbortCallback([this]() {
+                kill("SIGTERM");
+                Unref();
+            });
+        }
+    }
+
     return hr;
 }
 
 result_t ChildProcess::kill(int32_t signal)
 {
+    m_killed = true;
     return uv_process_kill(&m_process, signal);
 }
 
@@ -514,10 +588,16 @@ result_t ChildProcess::get_pid(int32_t& retVal)
     return 0;
 }
 
+result_t ChildProcess::get_killed(bool& retVal)
+{
+    retVal = m_killed;
+    return 0;
+}
+
 result_t ChildProcess::get_exitCode(int32_t& retVal)
 {
     if (!m_ev.isSet())
-        return CALL_E_INVALID_CALL;
+        return CALL_RETURN_NULL;
 
     retVal = m_exitCode;
     return 0;
@@ -552,4 +632,69 @@ result_t ChildProcess::get_stderr(obj_ptr<Stream_base>& retVal)
 
     return 0;
 }
+
+result_t ChildProcess::resize(int32_t cols, int32_t rows)
+{
+    if (!m_pty)
+        return CHECK_ERROR(Runtime::setError("resize() only available in PTY mode"));
+
+    if (cols <= 0 || rows <= 0)
+        return CHECK_ERROR(CALL_E_INVALIDARG);
+
+    if (m_stdinfd == -1 && m_stdoutfd == -1)
+        return CHECK_ERROR(Runtime::setError("PTY not available"));
+
+    // Update stored cols and rows
+    m_cols = cols;
+    m_rows = rows;
+
+#ifdef _WIN32
+    // Call resize function with process handle on Windows
+    int result = pty_resize(&m_process, cols, rows);
+    return result == 0 ? 0 : CHECK_ERROR(Runtime::setError("resize failed"));
+#else
+    // On POSIX systems, call ioctl directly
+    struct winsize winsize;
+    winsize.ws_col = cols;
+    winsize.ws_row = rows;
+    winsize.ws_xpixel = 0;
+    winsize.ws_ypixel = 0;
+
+    // Use whichever fd is available (both should point to the same pty)
+    int fd_to_use = (m_stdinfd != -1) ? m_stdinfd : m_stdoutfd;
+    int result = ioctl(fd_to_use, TIOCSWINSZ, &winsize);
+    return result == 0 ? 0 : CHECK_ERROR(Runtime::setError("resize failed"));
+#endif
+}
+
+result_t ChildProcess::get_cols(int32_t& retVal)
+{
+    if (!m_pty)
+        return CHECK_ERROR(Runtime::setError("cols property only available in PTY mode"));
+    retVal = m_cols;
+    return 0;
+}
+
+result_t ChildProcess::get_rows(int32_t& retVal)
+{
+    if (!m_pty)
+        return CHECK_ERROR(Runtime::setError("rows property only available in PTY mode"));
+    retVal = m_rows;
+    return 0;
+}
+
+result_t ChildProcess::ref(obj_ptr<ChildProcess_base>& retVal)
+{
+    object_base::isolate_ref();
+    retVal = this;
+    return 0;
+}
+
+result_t ChildProcess::unref(obj_ptr<ChildProcess_base>& retVal)
+{
+    object_base::isolate_unref();
+    retVal = this;
+    return 0;
+}
+
 }

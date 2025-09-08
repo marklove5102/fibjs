@@ -42,8 +42,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<gui_base>& retVal)
@@ -173,7 +172,7 @@ inline void gui_base::s_static_createTray(const v8::FunctionCallbackInfo<v8::Val
 
 inline void gui_base::s_static_alert(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("gui.alert");
 
     METHOD_OVER(1, 1);
 
@@ -201,7 +200,7 @@ inline void gui_base::s_static_confirm(const v8::FunctionCallbackInfo<v8::Value>
 {
     bool vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("gui.confirm");
 
     METHOD_OVER(1, 1);
 
@@ -229,7 +228,7 @@ inline void gui_base::s_static_input(const v8::FunctionCallbackInfo<v8::Value>& 
 {
     exlib::string vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("gui.input");
 
     METHOD_OVER(2, 1);
 
@@ -259,7 +258,7 @@ inline void gui_base::s_static_chooseFile(const v8::FunctionCallbackInfo<v8::Val
 {
     obj_ptr<NArray> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("gui.chooseFile");
 
     METHOD_OVER(1, 1);
 

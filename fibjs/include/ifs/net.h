@@ -52,8 +52,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<net_base>& retVal)
@@ -176,7 +175,7 @@ inline void net_base::s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>
 {
     exlib::string vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("net.resolve");
 
     METHOD_OVER(2, 1);
 
@@ -195,7 +194,7 @@ inline void net_base::s_static_ip(const v8::FunctionCallbackInfo<v8::Value>& arg
 {
     exlib::string vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("net.ip");
 
     METHOD_OVER(1, 1);
 
@@ -213,7 +212,7 @@ inline void net_base::s_static_ipv6(const v8::FunctionCallbackInfo<v8::Value>& a
 {
     exlib::string vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("net.ipv6");
 
     METHOD_OVER(1, 1);
 
@@ -231,7 +230,7 @@ inline void net_base::s_static_connect(const v8::FunctionCallbackInfo<v8::Value>
 {
     obj_ptr<Stream_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("net.connect");
 
     METHOD_OVER(2, 1);
 
@@ -250,7 +249,7 @@ inline void net_base::s_static_openSmtp(const v8::FunctionCallbackInfo<v8::Value
 {
     obj_ptr<Smtp_base> vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("net.openSmtp");
 
     METHOD_OVER(2, 1);
 

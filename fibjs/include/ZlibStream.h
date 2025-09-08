@@ -11,12 +11,26 @@
 #include "Buffer.h"
 #include "MemoryStream.h"
 #include <zlib/include/zlib.h>
+#include "AsyncStream.h"
 
 namespace fibjs {
 
 #define ZLIB_CHUNK 1024
 
-class ZlibStream : public Stream_base {
+// Window bits constants for different compression formats
+#define GZIP_WINDOW_BITS (MAX_WBITS + 16) // 15 + 16 = 31 for GZIP format
+#define RAW_WINDOW_BITS (-MAX_WBITS) // -15 for raw deflate format
+#define ZLIB_WINDOW_BITS MAX_WBITS // 15 for standard zlib format
+#define UNZIP_WINDOW_BITS (MAX_WBITS + 32) // 15 + 32 = 47 for auto-detect format
+
+// Default compression parameters
+#define DEFAULT_MEM_LEVEL 8 // Default memory level for deflate
+
+// GZIP header magic numbers
+#define GZIP_HEADER_ID1 0x1f
+#define GZIP_HEADER_ID2 0x8b
+
+class ZlibStream : public AsyncStream<Stream_base> {
 private:
     class asyncWrite : public AsyncState {
     public:
@@ -68,7 +82,7 @@ private:
 
             m_buffer = new Buffer((const char*)m_pThis->m_outBuffer, size);
             m_pThis->resetBuffer();
-            return m_stm->write(m_buffer, this);
+            return m_stm->write(m_buffer, m_len, this);
         }
 
     private:
@@ -78,6 +92,7 @@ private:
         obj_ptr<Buffer> m_data;
         exlib::string m_strBuf;
         int32_t m_flush;
+        int32_t m_len;
     };
 
 public:
@@ -118,7 +133,7 @@ public:
         return CALL_E_INVALID_CALL;
     }
 
-    result_t write(Buffer_base* data, AsyncEvent* ac)
+    result_t write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac)
     {
         return (new asyncWrite(this, m_stm, data, ac))->post(0);
     }
@@ -157,7 +172,7 @@ public:
 
             ON_STATE(asyncProcess, write)
             {
-                return m_pThis->write(m_data, next(write_ok));
+                return m_pThis->write(m_data, m_len, next(write_ok));
             }
 
             ON_STATE(asyncProcess, write_ok)
@@ -176,6 +191,7 @@ public:
             obj_ptr<Buffer_base> m_data;
             obj_ptr<Buffer_base>& m_retVal;
             obj_ptr<MemoryStream> m_stm;
+            int32_t m_len;
         };
 
         return (new asyncProcess(this, data, retVal, ac))->post(0);
@@ -195,7 +211,7 @@ public:
 
             ON_STATE(asyncProcess, write)
             {
-                return m_pThis->write(m_data, next(write_ok));
+                return m_pThis->write(m_data, m_len, next(write_ok));
             }
 
             ON_STATE(asyncProcess, write_ok)
@@ -206,6 +222,7 @@ public:
         private:
             obj_ptr<ZlibStream> m_pThis;
             obj_ptr<Buffer_base> m_data;
+            int32_t m_len;
         };
 
         return (new asyncProcess(this, data, ac))->post(0);
@@ -280,6 +297,8 @@ class inf_base : public ZlibStream {
 public:
     inf_base(Stream_base* stm, int32_t maxSize)
         : ZlibStream(stm, maxSize)
+        , m_mode(INFLATE_MODE_UNKNOWN)
+        , m_bytes_read(0)
     {
     }
 
@@ -293,19 +312,31 @@ public:
     {
         int32_t ret = ::inflate(&strm, flush);
 
-        if (ret == Z_DATA_ERROR) {
-            ret = inflateSync(&strm);
-            if (ret == Z_DATA_ERROR)
-                ret = Z_STREAM_END;
-        }
-
+        // Handle stream end normally
         if (ret == Z_STREAM_END) {
             inflateReset(&strm);
             return Z_OK;
         }
 
+        // For any error, return it immediately without trying to recover
+        // This ensures strict format validation and compatibility with Node.js
+        if (ret != Z_OK && ret != Z_BUF_ERROR && ret != Z_NEED_DICT) {
+            return ret;
+        }
+
         return ret;
     }
+
+protected:
+    enum inflate_mode {
+        INFLATE_MODE_UNKNOWN,
+        INFLATE_MODE_GZIP,
+        INFLATE_MODE_ZLIB,
+        INFLATE_MODE_RAW
+    };
+    
+    inflate_mode m_mode;
+    int32_t m_bytes_read;
 };
 
 class inf : public inf_base {
@@ -336,7 +367,7 @@ public:
     gunz(Stream_base* stm, int32_t maxSize)
         : inf_base(stm, maxSize)
     {
-        inflateInit2(&strm, 15 + 16);
+        inflateInit2(&strm, GZIP_WINDOW_BITS);
     }
 };
 
@@ -345,7 +376,7 @@ public:
     gz(Stream_base* stm)
         : def_base(stm)
     {
-        deflateInit2(&strm, -1, 8, 15 + 16, 8, 0);
+        deflateInit2(&strm, -1, Z_DEFLATED, GZIP_WINDOW_BITS, DEFAULT_MEM_LEVEL, Z_DEFAULT_STRATEGY);
     }
 };
 
@@ -354,7 +385,7 @@ public:
     infraw(Stream_base* stm, int32_t maxSize)
         : inf_base(stm, maxSize)
     {
-        inflateInit2(&strm, -15);
+        inflateInit2(&strm, RAW_WINDOW_BITS);
     }
 };
 
@@ -363,8 +394,95 @@ public:
     defraw(Stream_base* stm)
         : def_base(stm)
     {
-        deflateInit2(&strm, -1, Z_DEFLATED, -15, 8, 0);
+        deflateInit2(&strm, -1, Z_DEFLATED, RAW_WINDOW_BITS, DEFAULT_MEM_LEVEL, Z_DEFAULT_STRATEGY);
     }
+};
+
+class zip : public def_base {
+public:
+    zip(Stream_base* stm, int32_t level = -1)
+        : def_base(stm)
+    {
+        if (level < zlib_base::C_DEFAULT_COMPRESSION)
+            level = zlib_base::C_DEFAULT_COMPRESSION;
+        else if (level > zlib_base::C_BEST_COMPRESSION)
+            level = zlib_base::C_BEST_COMPRESSION;
+
+        // Use standard deflate format (with zlib headers) for Node.js compatibility
+        // This allows fibjs zip data to be decompressed by Node.js unzipSync
+        deflateInit2(&strm, level, Z_DEFLATED, ZLIB_WINDOW_BITS, DEFAULT_MEM_LEVEL, Z_DEFAULT_STRATEGY);
+    }
+};
+
+class unzip : public inf_base {
+public:
+    unzip(Stream_base* stm, int32_t maxSize)
+        : inf_base(stm, maxSize)
+        , m_auto_detect_init(false)
+    {
+        // Don't initialize zlib here - we'll do it after format detection
+    }
+
+public:
+    virtual int32_t do_process(int32_t flush) override
+    {
+        // Auto-detect format on first call
+        if (!m_auto_detect_init && strm.avail_in > 0) {
+            if (!detect_and_init_format()) {
+                return Z_DATA_ERROR;
+            }
+            m_auto_detect_init = true;
+        }
+        
+        // If we still don't have format, return error
+        if (!m_auto_detect_init) {
+            return Z_DATA_ERROR;
+        }
+
+        return inf_base::do_process(flush);
+    }
+
+private:
+    bool detect_and_init_format()
+    {
+        if (strm.avail_in < 1) {
+            // Need at least 1 byte for format detection
+            return false;
+        }
+
+        unsigned char* data = strm.next_in;
+        
+        // Check for GZIP format (0x1f, 0x8b)
+        if (data[0] == GZIP_HEADER_ID1 && strm.avail_in >= 2 && data[1] == GZIP_HEADER_ID2) {
+            // For GZIP format, we need at least the minimum header size (10 bytes)
+            // to ensure it's a complete gzip header, not just the magic number
+            if (strm.avail_in < 10) {
+                // Incomplete gzip header - need more data
+                // But since this is sync operation, we don't have more data coming
+                // So we should reject incomplete headers to match Node.js behavior
+                return false;
+            }
+            m_mode = INFLATE_MODE_GZIP;
+            return inflateInit2(&strm, GZIP_WINDOW_BITS) == Z_OK;
+        }
+        
+        // Check for zlib/deflate format (0x78, 0x9c or other valid combinations)
+        if (data[0] == 0x78) {
+            // For zlib format, we need at least 2 bytes for the header
+            if (strm.avail_in < 2) {
+                return false;
+            }
+            m_mode = INFLATE_MODE_ZLIB;
+            return inflateInit2(&strm, ZLIB_WINDOW_BITS) == Z_OK;
+        }
+        
+        // For Node.js compatibility, unzip should NOT handle deflateRaw format
+        // Only support gzip and deflate (zlib) formats like Node.js unzipSync
+        return false;
+    }
+
+private:
+    bool m_auto_detect_init;
 };
 
 } /* namespace fibjs */

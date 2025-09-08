@@ -11,6 +11,17 @@
 #include "AsyncUV.h"
 #include "UVStream.h"
 
+#undef stdout
+#undef stderr
+#include "ifs/child_process.h"
+
+// PTY function declarations
+extern "C" {
+int pty_spawn(uv_loop_t* loop, uv_process_t* process, const uv_process_options_t* options, int* stdinfd, int* stdoutfd, int cols, int rows);
+int pty_resize(uv_process_t* process, int cols, int rows);
+void pty_cleanup(uv_process_t* process);
+}
+
 namespace fibjs {
 
 class ChildProcess : public ChildProcess_base {
@@ -33,13 +44,17 @@ public:
     ChildProcess()
         : m_ipc(-1)
         , m_pty(false)
+        , m_killed(false)
+        , m_cols(80)
+        , m_rows(24)
+        , m_stdinfd(-1)
+        , m_stdoutfd(-1)
     {
         memset(&uv_options, 0, sizeof(uv_process_options_t));
         uv_options.exit_cb = OnExit;
     }
 
     FIBER_FREE();
-    EVENT_SUPPORT();
 
 public:
     // ChildProcess_base
@@ -51,18 +66,25 @@ public:
     virtual result_t send(v8::Local<v8::Value> msg);
     virtual result_t usage(v8::Local<v8::Object>& retVal);
     virtual result_t get_pid(int32_t& retVal);
+    virtual result_t get_killed(bool& retVal);
     virtual result_t get_exitCode(int32_t& retVal);
     virtual result_t get_stdin(obj_ptr<Stream_base>& retVal);
     virtual result_t get_stdout(obj_ptr<Stream_base>& retVal);
     virtual result_t get_stderr(obj_ptr<Stream_base>& retVal);
+    virtual result_t resize(int32_t cols, int32_t rows);
+    virtual result_t get_cols(int32_t& retVal);
+    virtual result_t get_rows(int32_t& retVal);
+    virtual result_t ref(obj_ptr<ChildProcess_base>& retVal);
+    virtual result_t unref(obj_ptr<ChildProcess_base>& retVal);
 
 public:
     static int32_t spawn(uv_process_t* process, const uv_process_options_t* options);
     result_t spawn(exlib::string command, v8::Local<v8::Array> args, v8::Local<v8::Object> options, bool fork);
 
 public:
-    EVENT_FUNC(exit);
-    EVENT_FUNC(message);
+    static result_t async_spawn(exlib::string command, v8::Local<v8::Array> args,
+        v8::Local<v8::Object> options, obj_ptr<child_process_base::SpawnSyncType>& retVal, AsyncEvent* ac);
+    ASYNC_STATICVALUE4(ChildProcess, async_spawn, exlib::string, v8::Local<v8::Array>, v8::Local<v8::Object>, obj_ptr<child_process_base::SpawnSyncType>);
 
 private:
     result_t create_pipe(int32_t idx);
@@ -74,6 +96,7 @@ private:
 public:
     static void on_uv_close(uv_handle_t* handle);
     static void OnExit(uv_process_t* handle, int64_t exit_status, int term_signal);
+    void on_handle_close();
 
 public:
     exlib::Event m_ev;
@@ -88,9 +111,15 @@ public:
     obj_ptr<Stream_base> m_channel;
 
     int32_t m_ipc;
+    std::atomic<int32_t> m_handle_count = 1;
 
     bool m_pty;
+    int32_t m_cols;
+    int32_t m_rows;
+    int32_t m_stdinfd;
+    int32_t m_stdoutfd;
 
+    bool m_killed;
     int32_t m_exitCode;
 
     std::vector<char*> envp;

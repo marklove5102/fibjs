@@ -21,6 +21,7 @@ class Stream_base;
 
 class ChildProcess_base : public EventEmitter_base {
     DECLARE_CLASS(ChildProcess_base);
+    EVENT_SUPPORT();
 
 public:
     // ChildProcess_base
@@ -30,24 +31,25 @@ public:
     virtual result_t get_connected(bool& retVal) = 0;
     virtual result_t disconnect() = 0;
     virtual result_t send(v8::Local<v8::Value> msg) = 0;
+    virtual result_t resize(int32_t cols, int32_t rows) = 0;
+    virtual result_t get_cols(int32_t& retVal) = 0;
+    virtual result_t get_rows(int32_t& retVal) = 0;
     virtual result_t usage(v8::Local<v8::Object>& retVal) = 0;
     virtual result_t get_pid(int32_t& retVal) = 0;
+    virtual result_t get_killed(bool& retVal) = 0;
     virtual result_t get_exitCode(int32_t& retVal) = 0;
     virtual result_t get_stdin(obj_ptr<Stream_base>& retVal) = 0;
     virtual result_t get_stdout(obj_ptr<Stream_base>& retVal) = 0;
     virtual result_t get_stderr(obj_ptr<Stream_base>& retVal) = 0;
-    virtual result_t get_onexit(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onexit(v8::Local<v8::Function> newVal) = 0;
-    virtual result_t get_onmessage(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onmessage(v8::Local<v8::Function> newVal) = 0;
+    virtual result_t ref(obj_ptr<ChildProcess_base>& retVal) = 0;
+    virtual result_t unref(obj_ptr<ChildProcess_base>& retVal) = 0;
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<ChildProcess_base>& retVal)
@@ -59,8 +61,12 @@ public:
     static void s_get_connected(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_disconnect(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_send(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_resize(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_get_cols(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_get_rows(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_usage(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_pid(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_get_killed(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_exitCode(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_stdin(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_stdout(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -69,6 +75,12 @@ public:
     static void s_set_onexit(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_onmessage(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_set_onmessage(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_get_onspawn(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_set_onspawn(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_get_ondisconnect(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_set_ondisconnect(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_ref(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_unref(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 public:
     ASYNC_MEMBERVALUE1(ChildProcess_base, join, int32_t);
@@ -85,18 +97,26 @@ inline ClassInfo& ChildProcess_base::class_info()
         { "join", s_join, false, ClassData::ASYNC_ASYNC },
         { "disconnect", s_disconnect, false, ClassData::ASYNC_SYNC },
         { "send", s_send, false, ClassData::ASYNC_SYNC },
-        { "usage", s_usage, false, ClassData::ASYNC_SYNC }
+        { "resize", s_resize, false, ClassData::ASYNC_SYNC },
+        { "usage", s_usage, false, ClassData::ASYNC_SYNC },
+        { "ref", s_ref, false, ClassData::ASYNC_SYNC },
+        { "unref", s_unref, false, ClassData::ASYNC_SYNC }
     };
 
     static ClassData::ClassProperty s_property[] = {
         { "connected", s_get_connected, block_set, false },
+        { "cols", s_get_cols, block_set, false },
+        { "rows", s_get_rows, block_set, false },
         { "pid", s_get_pid, block_set, false },
+        { "killed", s_get_killed, block_set, false },
         { "exitCode", s_get_exitCode, block_set, false },
         { "stdin", s_get_stdin, block_set, false },
         { "stdout", s_get_stdout, block_set, false },
         { "stderr", s_get_stderr, block_set, false },
         { "onexit", s_get_onexit, s_set_onexit, false },
-        { "onmessage", s_get_onmessage, s_set_onmessage, false }
+        { "onmessage", s_get_onmessage, s_set_onmessage, false },
+        { "onspawn", s_get_onspawn, s_set_onspawn, false },
+        { "ondisconnect", s_get_ondisconnect, s_set_ondisconnect, false }
     };
 
     static ClassData s_cd = {
@@ -121,9 +141,9 @@ inline void ChildProcess_base::s_kill(const v8::FunctionCallbackInfo<v8::Value>&
 
     hr = pInst->kill(v0);
 
-    METHOD_OVER(1, 1);
+    METHOD_OVER(1, 0);
 
-    ARG(exlib::string, 0);
+    OPT_ARG(exlib::string, 0, "SIGTERM");
 
     hr = pInst->kill(v0);
 
@@ -135,7 +155,7 @@ inline void ChildProcess_base::s_join(const v8::FunctionCallbackInfo<v8::Value>&
     int32_t vr;
 
     ASYNC_METHOD_INSTANCE(ChildProcess_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ChildProcess.join");
 
     METHOD_OVER(0, 0);
 
@@ -187,6 +207,49 @@ inline void ChildProcess_base::s_send(const v8::FunctionCallbackInfo<v8::Value>&
     METHOD_VOID();
 }
 
+inline void ChildProcess_base::s_resize(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(2, 2);
+
+    ARG(int32_t, 0);
+    ARG(int32_t, 1);
+
+    hr = pInst->resize(v0, v1);
+
+    METHOD_VOID();
+}
+
+inline void ChildProcess_base::s_get_cols(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    int32_t vr;
+
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->get_cols(vr);
+
+    METHOD_RETURN();
+}
+
+inline void ChildProcess_base::s_get_rows(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    int32_t vr;
+
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->get_rows(vr);
+
+    METHOD_RETURN();
+}
+
 inline void ChildProcess_base::s_usage(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     v8::Local<v8::Object> vr;
@@ -211,6 +274,20 @@ inline void ChildProcess_base::s_get_pid(const v8::FunctionCallbackInfo<v8::Valu
     METHOD_OVER(0, 0);
 
     hr = pInst->get_pid(vr);
+
+    METHOD_RETURN();
+}
+
+inline void ChildProcess_base::s_get_killed(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    bool vr;
+
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->get_killed(vr);
 
     METHOD_RETURN();
 }
@@ -280,7 +357,7 @@ inline void ChildProcess_base::s_get_onexit(const v8::FunctionCallbackInfo<v8::V
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onexit(vr);
+    hr = pInst->getListener("exit", vr);
 
     METHOD_RETURN();
 }
@@ -294,7 +371,7 @@ inline void ChildProcess_base::s_set_onexit(const v8::FunctionCallbackInfo<v8::V
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onexit(v0);
+    hr = pInst->setListener("exit", v0);
 
     METHOD_VOID();
 }
@@ -308,7 +385,7 @@ inline void ChildProcess_base::s_get_onmessage(const v8::FunctionCallbackInfo<v8
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onmessage(vr);
+    hr = pInst->getListener("message", vr);
 
     METHOD_RETURN();
 }
@@ -322,8 +399,92 @@ inline void ChildProcess_base::s_set_onmessage(const v8::FunctionCallbackInfo<v8
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onmessage(v0);
+    hr = pInst->setListener("message", v0);
 
     METHOD_VOID();
+}
+
+inline void ChildProcess_base::s_get_onspawn(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    v8::Local<v8::Function> vr;
+
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->getListener("spawn", vr);
+
+    METHOD_RETURN();
+}
+
+inline void ChildProcess_base::s_set_onspawn(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(v8::Local<v8::Function>, 0);
+
+    hr = pInst->setListener("spawn", v0);
+
+    METHOD_VOID();
+}
+
+inline void ChildProcess_base::s_get_ondisconnect(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    v8::Local<v8::Function> vr;
+
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->getListener("disconnect", vr);
+
+    METHOD_RETURN();
+}
+
+inline void ChildProcess_base::s_set_ondisconnect(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 1);
+
+    ARG(v8::Local<v8::Function>, 0);
+
+    hr = pInst->setListener("disconnect", v0);
+
+    METHOD_VOID();
+}
+
+inline void ChildProcess_base::s_ref(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    obj_ptr<ChildProcess_base> vr;
+
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->ref(vr);
+
+    METHOD_RETURN();
+}
+
+inline void ChildProcess_base::s_unref(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    obj_ptr<ChildProcess_base> vr;
+
+    METHOD_INSTANCE(ChildProcess_base);
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = pInst->unref(vr);
+
+    METHOD_RETURN();
 }
 }

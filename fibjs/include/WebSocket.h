@@ -49,8 +49,6 @@ public:
 
     ~WebSocket();
 
-    EVENT_SUPPORT();
-
 public:
     // object_base
     virtual result_t onEventChange(exlib::string type, exlib::string ev, v8::Local<v8::Function> func)
@@ -77,12 +75,6 @@ public:
     virtual result_t send(Buffer_base* data);
     virtual result_t ref(obj_ptr<WebSocket_base>& retVal);
     virtual result_t unref(obj_ptr<WebSocket_base>& retVal);
-
-public:
-    EVENT_FUNC(open);
-    EVENT_FUNC(message);
-    EVENT_FUNC(close);
-    EVENT_FUNC(error);
 
 public:
     void startRecv(Isolate* isolate);

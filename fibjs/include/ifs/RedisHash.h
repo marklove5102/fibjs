@@ -42,8 +42,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<RedisHash_base>& retVal)
@@ -104,7 +103,7 @@ inline void RedisHash_base::s_set(const v8::FunctionCallbackInfo<v8::Value>& arg
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = pInst->set(v0, v1);
+    hr = pInst->set(v0.get(), v1.get());
 
     METHOD_VOID();
 }
@@ -119,7 +118,7 @@ inline void RedisHash_base::s_setNX(const v8::FunctionCallbackInfo<v8::Value>& a
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = pInst->setNX(v0, v1);
+    hr = pInst->setNX(v0.get(), v1.get());
 
     METHOD_VOID();
 }
@@ -155,7 +154,7 @@ inline void RedisHash_base::s_get(const v8::FunctionCallbackInfo<v8::Value>& arg
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->get(v0, vr);
+    hr = pInst->get(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -194,7 +193,7 @@ inline void RedisHash_base::s_incr(const v8::FunctionCallbackInfo<v8::Value>& ar
     ARG(obj_ptr<Buffer_base>, 0);
     OPT_ARG(int64_t, 1, 1);
 
-    hr = pInst->incr(v0, v1, vr);
+    hr = pInst->incr(v0.get(), v1, vr);
 
     METHOD_RETURN();
 }
@@ -252,7 +251,7 @@ inline void RedisHash_base::s_exists(const v8::FunctionCallbackInfo<v8::Value>& 
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->exists(v0, vr);
+    hr = pInst->exists(v0.get(), vr);
 
     METHOD_RETURN();
 }

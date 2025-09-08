@@ -11,13 +11,18 @@ run("./assert_test.js");
 run("./assertion_error_test.js");
 run("./test_test.js");
 run("./class_test.js");
-run("./global_test.js");
+
+run("./abortcontroller_test.js");
+run("./headers_test.js");
+
 run("./perf_test.js");
 run("./console_test.js");
 run("./icu_test.js");
 run("./punycode_test.js");
 run("./timer_test.js");
 run("./buffer_test.js");
+run("./encoding_test.js");
+run("./atob_btoa_test.js");
 run("./path_test.js");
 run("./path_match_test.js");
 run("./util_test.js");
@@ -25,6 +30,7 @@ run("./types_test.js");
 run("./promise_test.js");
 run("./microtask_test.js");
 run("./xml_test.js");
+run("./querySelector_test.js");
 
 if (process.env.CI)
     run("./xml_suite.js");
@@ -32,17 +38,18 @@ if (process.env.CI)
 run("./addons_test.js");
 
 run("./coroutine_test.js");
+run("./stack_test.js");
 run("./fibmod_test.js");
 run("./trigger_test.js");
 run("./lock_test.js");
 run("./fs_test.js");
+run("./fs_glob_test.js");
 run("./fswatch_test.js");
 run("./ms_test.js");
 run("./io_test.js");
 run("./os_test.js");
 run("./process_test.js");
 run("./child_process_test.js");
-run("./encoding_test.js");
 run("./json_test.js");
 run("./module_test.js");
 run("./esm_test.js");
@@ -53,13 +60,18 @@ run("./dgram_test.js");
 run("./buffered_test.js");
 run("./hash_test.js");
 run("./crypto_test.js");
+run("./webcrypto_test.js");
 run("./bbs_test.js");
 run("./tls_test.js");
 run("./string_decoder_test.js");
+run("./url_search_params_test.js");
+run("./blob_test.js");
+run("./formdata_test.js");
 run("./url_test.js");
 run("./querystring_test.js");
 run("./mime_test.js");
 run("./http_test.js");
+run("./sse_test.js");
 run("./mq_test.js");
 run("./rtc_test.js");
 

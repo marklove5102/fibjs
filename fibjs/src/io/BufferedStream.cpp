@@ -143,9 +143,9 @@ result_t BufferedStream::read(int32_t bytes, obj_ptr<Buffer_base>& retVal,
     return (new asyncRead(this, bytes, retVal, ac))->post(0);
 }
 
-result_t BufferedStream::write(Buffer_base* data, AsyncEvent* ac)
+result_t BufferedStream::write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac)
 {
-    return m_stm->write(data, ac);
+    return m_stm->write(data, retVal, ac);
 }
 
 result_t BufferedStream::flush(AsyncEvent* ac)
@@ -286,10 +286,10 @@ result_t BufferedStream::readUntil(exlib::string mk, int32_t maxlen,
             while ((pos < (int32_t)pThis->m_buf.length())
                 && (pThis->m_temp < mklen)) {
                 if (pThis->m_temp == 0) {
-                    char ch = mk.c_str()[0];
+                    char ch = mk[0];
 
                     while (pos < (int32_t)pThis->m_buf.length())
-                        if (pThis->m_buf.c_str()[pos++] == ch) {
+                        if (pThis->m_buf[pos++] == ch) {
                             pThis->m_temp++;
                             break;
                         }
@@ -298,7 +298,7 @@ result_t BufferedStream::readUntil(exlib::string mk, int32_t maxlen,
                 if (pThis->m_temp > 0) {
                     while ((pos < (int32_t)pThis->m_buf.length())
                         && (pThis->m_temp < mklen)) {
-                        if (pThis->m_buf.c_str()[pos] != mk.c_str()[pThis->m_temp]) {
+                        if (pThis->m_buf[pos] != mk[pThis->m_temp]) {
                             pThis->m_temp = 0;
                             break;
                         }
@@ -355,7 +355,7 @@ result_t BufferedStream::readUntil(exlib::string mk, int32_t maxlen,
     return (new asyncRead(this, mk, maxlen, retVal, ac))->post(0);
 }
 
-result_t BufferedStream::writeText(exlib::string txt, AsyncEvent* ac)
+result_t BufferedStream::writeText(exlib::string txt, int32_t& retVal, AsyncEvent* ac)
 {
     if (ac->isSync())
         return CHECK_ERROR(CALL_E_NOSYNC);
@@ -367,10 +367,10 @@ result_t BufferedStream::writeText(exlib::string txt, AsyncEvent* ac)
         return hr;
 
     obj_ptr<Buffer_base> data = new Buffer(strBuf.c_str(), strBuf.length());
-    return write(data, ac);
+    return write(data, retVal, ac);
 }
 
-result_t BufferedStream::writeLine(exlib::string txt, AsyncEvent* ac)
+result_t BufferedStream::writeLine(exlib::string txt, int32_t& retVal, AsyncEvent* ac)
 {
     if (ac->isSync())
         return CHECK_ERROR(CALL_E_NOSYNC);
@@ -383,7 +383,7 @@ result_t BufferedStream::writeLine(exlib::string txt, AsyncEvent* ac)
 
     strBuf.append(m_eol);
     obj_ptr<Buffer_base> data = new Buffer(strBuf.c_str(), strBuf.length());
-    return write(data, ac);
+    return write(data, retVal, ac);
 }
 
 result_t BufferedStream::get_stream(obj_ptr<Stream_base>& retVal)
@@ -412,9 +412,9 @@ result_t BufferedStream::get_EOL(exlib::string& retVal)
 
 result_t BufferedStream::set_EOL(exlib::string newVal)
 {
-    if (newVal.c_str()[0] == '\r' && newVal.c_str()[1] == '\n')
+    if (newVal[0] == '\r' && newVal[1] == '\n')
         m_eol.assign(newVal.c_str(), 2);
-    else if (newVal.c_str()[1] == '\0' && (newVal.c_str()[0] == '\r' || newVal.c_str()[0] == '\n'))
+    else if (newVal[1] == '\0' && (newVal[0] == '\r' || newVal[0] == '\n'))
         m_eol.assign(newVal.c_str(), 1);
     else
         return CHECK_ERROR(CALL_E_INVALIDARG);

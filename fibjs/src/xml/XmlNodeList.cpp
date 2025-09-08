@@ -367,6 +367,20 @@ result_t XmlNodeList::cloneChilds(XmlNode_base* to)
     return 0;
 }
 
+result_t XmlNodeList::symbol_iterator(obj_ptr<Iterator_base>& retVal)
+{
+    retVal = new Iterator(this, [this](size_t index, Variant& retVal, Iterator::IteratorCallback cb) {
+        if (index >= m_childs.size()) {
+            cb(false);
+            return;
+        }
+
+        retVal = m_childs[index]->m_node;
+        cb(true);
+    });
+    return 0;
+}
+
 result_t XmlNodeList::normalize()
 {
     int32_t i;

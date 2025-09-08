@@ -70,8 +70,18 @@ result_t xml_base::serialize(XmlNode_base* node, exlib::string& retVal)
 void XmlDocument::create_root()
 {
     obj_ptr<XmlNode_base> tmp;
+
+    // Create HTML root element
     m_element = new XmlElement(this, "html", false);
     appendChild(m_element, tmp);
+
+    // Create HEAD element
+    obj_ptr<XmlElement> head = new XmlElement(this, "head", false);
+    m_element->appendChild(head, tmp);
+
+    // Create BODY element
+    obj_ptr<XmlElement> body = new XmlElement(this, "body", false);
+    m_element->appendChild(body, tmp);
 }
 
 result_t XmlDocument::get_nodeName(exlib::string& retVal)
@@ -257,6 +267,11 @@ result_t XmlDocument::removeChild(XmlNode_base* oldChild, obj_ptr<XmlNode_base>&
         m_doctype.Release();
 
     return m_childs->removeChild(oldChild, retVal);
+}
+
+result_t XmlDocument::remove(obj_ptr<XmlNode_base>& retVal)
+{
+    return XmlNodeImpl::remove(retVal);
 }
 
 result_t XmlDocument::appendChild(XmlNode_base* newChild, obj_ptr<XmlNode_base>& retVal)
@@ -534,6 +549,22 @@ result_t XmlDocument::getElementsByClassName(exlib::string className, obj_ptr<Xm
 
     retVal = ret;
     return 0;
+}
+
+result_t XmlDocument::querySelector(exlib::string selectors, obj_ptr<XmlElement_base>& retVal)
+{
+    if (!m_element)
+        return CALL_RETURN_NULL;
+
+    return m_element->querySelector(selectors, retVal);
+}
+
+result_t XmlDocument::querySelectorAll(exlib::string selectors, obj_ptr<XmlNodeList_base>& retVal)
+{
+    if (!m_element)
+        return CALL_RETURN_NULL;
+
+    return m_element->querySelectorAll(selectors, retVal);
 }
 
 result_t XmlDocument::get_inputEncoding(exlib::string& retVal)

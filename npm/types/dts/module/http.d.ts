@@ -1,13 +1,13 @@
 /// <reference path="../_import/_fibjs.d.ts" />
 /// <reference path="../interface/HttpRequest.d.ts" />
 /// <reference path="../interface/HttpResponse.d.ts" />
+/// <reference path="../interface/Headers.d.ts" />
 /// <reference path="../interface/HttpCookie.d.ts" />
 /// <reference path="../interface/HttpServer.d.ts" />
 /// <reference path="../interface/HttpClient.d.ts" />
 /// <reference path="../interface/HttpsServer.d.ts" />
 /// <reference path="../interface/HttpHandler.d.ts" />
 /// <reference path="../interface/HttpRepeater.d.ts" />
-/// <reference path="../interface/EventSource.d.ts" />
 /// <reference path="../interface/Handler.d.ts" />
 /// <reference path="../interface/Stream.d.ts" />
 /// <reference path="../interface/SeekableStream.d.ts" />
@@ -56,6 +56,11 @@ declare module 'http' {
     const Response: typeof Class_HttpResponse;
 
     /**
+     * @description 创建一个 Headers 对象，参见 Headers 
+     */
+    const Headers: typeof Class_Headers;
+
+    /**
      * @description 创建一个 http cookie 对象，参见 HttpCookie 
      */
     const Cookie: typeof Class_HttpCookie;
@@ -84,11 +89,6 @@ declare module 'http' {
      * @description 创建一个 http 请求转发处理器对象，参见 HttpRepeater 
      */
     const Repeater: typeof Class_HttpRepeater;
-
-    /**
-     * @description 创建一个事件源接口，用于服务器推送事件，参见 EventSource 
-     */
-    const EventSource: typeof Class_EventSource;
 
     /**
      * @description 返回标准的 HTTP 响应状态码的集合，以及各自的简短描述。 
@@ -236,7 +236,7 @@ declare module 'http' {
      */
     function request(method: string, url: string, opts?: FIBJS.GeneralObject): Class_HttpResponse;
 
-    function request(method: string, url: string, opts?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
+    function request(method: string, url: string, opts?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
 
     /**
      * @description 用 GET 方法请求指定的 url，并返回结果，等同于 request("GET", ...)
@@ -267,7 +267,7 @@ declare module 'http' {
      */
     function request(url: string, opts?: FIBJS.GeneralObject): Class_HttpResponse;
 
-    function request(url: string, opts?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
+    function request(url: string, opts?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
 
     /**
      * @description 请求 opts 指定的 url，并返回结果
@@ -328,7 +328,7 @@ declare module 'http' {
      */
     function get(url: string, opts?: FIBJS.GeneralObject): Class_HttpResponse;
 
-    function get(url: string, opts?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
+    function get(url: string, opts?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
 
     /**
      * @description 用 POST 方法请求指定的 url，并返回结果，等同于 request("POST", ...)
@@ -359,7 +359,7 @@ declare module 'http' {
      */
     function post(url: string, opts?: FIBJS.GeneralObject): Class_HttpResponse;
 
-    function post(url: string, opts?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
+    function post(url: string, opts?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
 
     /**
      * @description 用 DELETE 方法请求指定的 url，并返回结果，等同于 request("DELETE", ...)
@@ -390,7 +390,7 @@ declare module 'http' {
      */
     function del(url: string, opts?: FIBJS.GeneralObject): Class_HttpResponse;
 
-    function del(url: string, opts?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
+    function del(url: string, opts?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
 
     /**
      * @description 用 PUT 方法请求指定的 url，并返回结果，等同于 request("PUT", ...)
@@ -421,7 +421,7 @@ declare module 'http' {
      */
     function put(url: string, opts?: FIBJS.GeneralObject): Class_HttpResponse;
 
-    function put(url: string, opts?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
+    function put(url: string, opts?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
 
     /**
      * @description 用 PATCH 方法请求指定的 url，并返回结果，等同于 request("PATCH", ...)
@@ -452,7 +452,7 @@ declare module 'http' {
      */
     function patch(url: string, opts?: FIBJS.GeneralObject): Class_HttpResponse;
 
-    function patch(url: string, opts?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
+    function patch(url: string, opts?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
 
     /**
      * @description 用 HEAD 方法请求指定的 url，并返回结果，等同于 request("HEAD", ...)
@@ -483,7 +483,7 @@ declare module 'http' {
      */
     function head(url: string, opts?: FIBJS.GeneralObject): Class_HttpResponse;
 
-    function head(url: string, opts?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
+    function head(url: string, opts?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: Class_HttpResponse)=>any): void;
 
 }
 

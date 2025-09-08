@@ -33,8 +33,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<SQLite_base>& retVal)
@@ -119,7 +118,7 @@ inline void SQLite_base::s_set_timeout(const v8::FunctionCallbackInfo<v8::Value>
 inline void SQLite_base::s_backup(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(SQLite_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("SQLite.backup");
 
     METHOD_OVER(1, 1);
 

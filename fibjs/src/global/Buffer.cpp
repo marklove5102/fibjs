@@ -1,5 +1,6 @@
 #include "object.h"
 #include "Buffer.h"
+#include "Blob.h"
 #include "SandBox.h"
 #include "encoding.h"
 
@@ -37,7 +38,7 @@ result_t Buffer_base::_new(v8::Local<v8::Array> datas, obj_ptr<Buffer_base>& ret
     return from(datas, retVal);
 }
 
-result_t Buffer_base::_new(v8::Local<v8::ArrayBuffer> datas, int32_t byteOffset, int32_t length, obj_ptr<Buffer_base>& retVal, v8::Local<v8::Object> This)
+result_t Buffer_base::_new(std::shared_ptr<v8::BackingStore> datas, int32_t byteOffset, int32_t length, obj_ptr<Buffer_base>& retVal, v8::Local<v8::Object> This)
 {
     return from(datas, byteOffset, length, retVal);
 }
@@ -139,20 +140,18 @@ result_t Buffer_base::from(Buffer_base* buffer, int32_t byteOffset, int32_t leng
     return 0;
 }
 
-result_t Buffer_base::from(v8::Local<v8::ArrayBuffer> datas, int32_t byteOffset, int32_t length, obj_ptr<Buffer_base>& retVal)
+result_t Buffer_base::from(std::shared_ptr<v8::BackingStore> datas, int32_t byteOffset, int32_t length, obj_ptr<Buffer_base>& retVal)
 {
-    std::shared_ptr<v8::BackingStore> cnt = datas->GetBackingStore();
-
     if (byteOffset < 0)
         byteOffset = 0;
 
     if (length < 0)
-        length = cnt->ByteLength() - byteOffset;
+        length = datas->ByteLength() - byteOffset;
 
-    if (length < 0 || length > cnt->ByteLength() - byteOffset)
+    if (length < 0 || length > datas->ByteLength() - byteOffset)
         length = 0;
 
-    retVal = new Buffer((uint8_t*)cnt->Data() + byteOffset, length);
+    retVal = new Buffer((uint8_t*)datas->Data() + byteOffset, length);
 
     return 0;
 }
@@ -167,7 +166,7 @@ result_t Buffer_base::from(v8::Local<v8::Uint8Array> datas, int32_t byteOffset, 
     else if (length > datas->ByteLength() - byteOffset)
         return CALL_E_INVALIDARG;
 
-    return from(datas->Buffer(), byteOffset + datas->ByteOffset(), length, retVal);
+    return from(datas->Buffer()->GetBackingStore(), byteOffset + datas->ByteOffset(), length, retVal);
 }
 
 result_t Buffer_base::from(exlib::string str, exlib::string codec, obj_ptr<Buffer_base>& retVal)
@@ -244,7 +243,7 @@ v8::Local<v8::Value> Buffer::load_module()
     js_buffer_proto->Set(context, isolate->NewString("compare"), isolate->NewFunction("compare", proto_compare)).IsJust();
     js_buffer_proto->Set(context, isolate->NewString("equals"), isolate->NewFunction("equals", proto_equals)).IsJust();
     js_buffer_proto->Set(context, isolate->NewString("indexOf"), isolate->NewFunction("indexOf", proto_indexOf)).IsJust();
-    js_buffer_proto->Set(context, isolate->NewString("lastIndexOf"), isolate->NewFunction("lastIndexOf", proto_indexOf)).IsJust();
+    js_buffer_proto->Set(context, isolate->NewString("lastIndexOf"), isolate->NewFunction("lastIndexOf", proto_lastIndexOf)).IsJust();
 
     v8::Local<v8::Object> js_buffer_class = _buffer.As<v8::Object>();
     js_buffer_class->Set(context, isolate->NewString("compare"), isolate->NewFunction("compare", s_static_compare)).IsJust();
@@ -304,6 +303,17 @@ result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Buff
             return 0;
         }
 
+        if (v->IsSharedArrayBuffer()) {
+            v8::Local<v8::SharedArrayBuffer> sab = v.As<v8::SharedArrayBuffer>();
+            std::shared_ptr<v8::BackingStore> backing = sab->GetBackingStore();
+            if (backing && backing->Data()) {
+                vr = new Buffer(backing, 0, backing->ByteLength());
+            } else {
+                Buffer_base::allocUnsafe(0, vr);
+            }
+            return 0;
+        }
+
         if (v->IsDataView()) {
             v8::Local<v8::DataView> view = v.As<v8::DataView>();
             vr = new Buffer(view->Buffer()->GetBackingStore(), view->ByteOffset(), view->ByteLength());
@@ -318,6 +328,13 @@ result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Buff
 
         if (v->IsArray())
             return Buffer_base::from(v.As<v8::Array>(), vr);
+
+        obj_ptr<Blob_base> blob = Blob_base::getInstance(v);
+        if (blob) {
+            Blob* b = blob.As<Blob>();
+            vr = b->m_impl.getBuffer();
+            return 0;
+        }
 
         if (!v->IsTypedArray())
             return CALL_E_TYPEMISMATCH;
@@ -477,21 +494,21 @@ void Buffer::proto_lastIndexOf(const v8::FunctionCallbackInfo<v8::Value>& args)
     METHOD_OVER(2, 1);
 
     ARG(int32_t, 0);
-    OPT_ARG(int32_t, 1, 0);
+    OPT_ARG(int32_t, 1, -1);
 
     hr = pInst->lastIndexOf(v0, v1, vr);
 
     METHOD_OVER(2, 1);
 
     ARG(obj_ptr<Buffer_base>, 0);
-    OPT_ARG(int32_t, 1, 0);
+    OPT_ARG(int32_t, 1, -1);
 
     hr = pInst->lastIndexOf(v0, v1, vr);
 
     METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
-    OPT_ARG(int32_t, 1, 0);
+    OPT_ARG(int32_t, 1, -1);
 
     hr = pInst->lastIndexOf(v0, v1, vr);
 
@@ -759,7 +776,7 @@ result_t Buffer_base::byteLength(exlib::string str, exlib::string codec, int32_t
     return 0;
 }
 
-result_t Buffer_base::byteLength(v8::Local<v8::ArrayBuffer> str, int32_t& retVal)
+result_t Buffer_base::byteLength(std::shared_ptr<v8::BackingStore> str, int32_t& retVal)
 {
     obj_ptr<Buffer_base> buf;
 
@@ -1345,9 +1362,54 @@ result_t Buffer::writeDoubleBE(double value, int32_t offset, int32_t& retVal)
     WRITE_NUMBER(double, false);
 }
 
+// Helper function for indexOf implementations
+static result_t Buffer_indexOf(Buffer* buf, const uint8_t* v, int32_t v_len, int32_t offset, int32_t& retVal)
+{
+    int32_t buf_length = (int32_t)buf->length();
+
+    // Handle empty pattern
+    if (v_len == 0) {
+        // Handle negative offset like Node.js
+        if (offset < 0) {
+            offset = buf_length + offset;
+            if (offset < 0)
+                offset = 0;
+        }
+        // Clamp offset to buffer length
+        retVal = MIN(offset, buf_length);
+        return 0;
+    }
+
+    // Handle negative offset like Node.js: Math.max(0, buf.length + offset)
+    if (offset < 0) {
+        offset = buf_length + offset;
+        if (offset < 0)
+            offset = 0;
+    }
+
+    // For large offsets, return -1 without throwing error
+    if (offset >= buf_length) {
+        retVal = -1;
+        return 0;
+    }
+
+    const uint8_t* find = exlib::qmemmem(buf->data() + offset, buf->length() - offset, v, v_len);
+
+    retVal = find ? (int32_t)(find - buf->data()) : -1;
+    return 0;
+}
+
 result_t Buffer::indexOf(int32_t v, int32_t offset, int32_t& retVal)
 {
     int32_t buf_length = (int32_t)length();
+
+    // Handle negative offset like Node.js: Math.max(0, buf.length + offset)
+    if (offset < 0) {
+        offset = buf_length + offset;
+        if (offset < 0)
+            offset = 0;
+    }
+
     result_t hr = validOffset(buf_length, offset);
     if (hr < 0)
         return CHECK_ERROR(hr);
@@ -1368,42 +1430,82 @@ result_t Buffer::indexOf(int32_t v, int32_t offset, int32_t& retVal)
 
 result_t Buffer::indexOf(Buffer_base* v, int32_t offset, int32_t& retVal)
 {
-    result_t hr = validOffset((int32_t)length(), offset);
-    if (hr < 0)
-        return CHECK_ERROR(hr);
-
     Buffer* v_data = Buffer::Cast(v);
-    const uint8_t* find = exlib::qmemmem(data() + offset, length() - offset,
-        v_data->data(), v_data->length());
-
-    retVal = find ? (int32_t)(find - data()) : -1;
-    return 0;
+    return Buffer_indexOf(this, v_data->data(), v_data->length(), offset, retVal);
 }
 
 result_t Buffer::indexOf(exlib::string v, int32_t offset, int32_t& retVal)
 {
-    result_t hr = validOffset((int32_t)length(), offset);
-    if (hr < 0)
-        return CHECK_ERROR(hr);
-
-    const uint8_t* find = exlib::qmemmem(data() + offset, length() - offset,
-        (const uint8_t*)v.c_str(), v.length());
-
-    retVal = find ? (int32_t)(find - data()) : -1;
-    return 0;
+    return Buffer_indexOf(this, (const uint8_t*)v.c_str(), v.length(), offset, retVal);
 }
 
 result_t Buffer::lastIndexOf(int32_t v, int32_t offset, int32_t& retVal)
 {
     int32_t buf_length = (int32_t)length();
+
+    if (offset == -1)
+        offset = buf_length - 1;
+
     result_t hr = validOffset(buf_length, offset);
     if (hr < 0)
         return CHECK_ERROR(hr);
 
     const uint8_t* _data = data();
 
-    for (int32_t i = buf_length - 1; i >= offset; --i) {
+    for (int32_t i = offset; i >= 0; --i) {
         if (_data[i] == (v & 255)) {
+            retVal = i;
+            return 0;
+        }
+    }
+
+    retVal = -1;
+    return 0;
+}
+
+static result_t Buffer_lastIndexOf(Buffer* buffer, const uint8_t* v, int32_t v_len, int32_t offset, int32_t& retVal)
+{
+    int32_t buf_length = (int32_t)buffer->length();
+
+    // Handle empty pattern search
+    if (v_len == 0) {
+        if (offset == -1)
+            offset = buf_length;
+        else if (offset < 0)
+            offset = 0;
+        else if (offset > buf_length)
+            offset = buf_length;
+
+        retVal = offset;
+        return 0;
+    }
+
+    // Handle empty buffer
+    if (buf_length == 0) {
+        retVal = -1;
+        return 0;
+    }
+
+    if (offset == -1)
+        offset = buf_length - 1;
+
+    // Handle negative offset like Node.js: clamp to 0
+    if (offset < 0) {
+        retVal = -1;
+        return 0;
+    }
+
+    // Handle large offsets without throwing error
+    if (offset >= buf_length)
+        offset = buf_length - 1;
+
+    const uint8_t* _data = buffer->data();
+
+    // Start from offset, but don't go beyond where the pattern could fit
+    int32_t start_pos = MIN(offset, buf_length - v_len);
+
+    for (int32_t i = start_pos; i >= 0; --i) {
+        if (memcmp(_data + i, v, v_len) == 0) {
             retVal = i;
             return 0;
         }
@@ -1415,45 +1517,13 @@ result_t Buffer::lastIndexOf(int32_t v, int32_t offset, int32_t& retVal)
 
 result_t Buffer::lastIndexOf(Buffer_base* v, int32_t offset, int32_t& retVal)
 {
-    result_t hr = validOffset((int32_t)length(), offset);
-    if (hr < 0)
-        return CHECK_ERROR(hr);
-
     Buffer* v_data = Buffer::Cast(v);
-    const uint8_t* _data = data();
-    const uint8_t* v_data_ptr = v_data->data();
-    int32_t v_length = v_data->length();
-
-    for (int32_t i = length() - v_length; i >= offset; --i) {
-        if (memcmp(_data + i, v_data_ptr, v_length) == 0) {
-            retVal = i;
-            return 0;
-        }
-    }
-
-    retVal = -1;
-    return 0;
+    return Buffer_lastIndexOf(this, v_data->data(), v_data->length(), offset, retVal);
 }
 
 result_t Buffer::lastIndexOf(exlib::string v, int32_t offset, int32_t& retVal)
 {
-    result_t hr = validOffset((int32_t)length(), offset);
-    if (hr < 0)
-        return CHECK_ERROR(hr);
-
-    const uint8_t* _data = data();
-    const uint8_t* v_data = (const uint8_t*)v.c_str();
-    int32_t v_length = v.length();
-
-    for (int32_t i = length() - v_length; i >= offset; --i) {
-        if (memcmp(_data + i, v_data, v_length) == 0) {
-            retVal = i;
-            return 0;
-        }
-    }
-
-    retVal = -1;
-    return 0;
+    return Buffer_lastIndexOf(this, (const uint8_t*)v.c_str(), v.length(), offset, retVal);
 }
 
 result_t Buffer::slice(int32_t start, obj_ptr<Buffer_base>& retVal)
@@ -1484,6 +1554,40 @@ result_t Buffer::slice(int32_t start, int32_t end, obj_ptr<Buffer_base>& retVal)
         retVal = new Buffer(data() + start, end - start);
     else
         retVal = new Buffer(NULL, 0);
+
+    return 0;
+}
+
+result_t Buffer::subarray(int32_t start, int32_t end, obj_ptr<Buffer_base>& retVal)
+{
+    int32_t length = (int32_t)Buffer::length();
+
+    // Normalize start
+    if (start < 0)
+        start = length + start;
+
+    // Normalize end
+    if (end < 0)
+        end = length + end;
+
+    // Clamp to valid range
+    if (start < 0)
+        start = 0;
+
+    if (end > length)
+        end = length;
+
+    if (start > end)
+        start = end;
+
+    // Create zero-copy subarray by sharing the backing store
+    if (start < end) {
+        size_t newOffset = m_store.m_offset + start;
+        size_t newLength = end - start;
+        retVal = new Buffer(m_store.m_store, newOffset, newLength);
+    } else {
+        retVal = new Buffer(NULL, 0);
+    }
 
     return 0;
 }

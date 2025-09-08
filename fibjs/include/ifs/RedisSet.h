@@ -38,8 +38,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<RedisSet_base>& retVal)
@@ -151,7 +150,7 @@ inline void RedisSet_base::s_exists(const v8::FunctionCallbackInfo<v8::Value>& a
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->exists(v0, vr);
+    hr = pInst->exists(v0.get(), vr);
 
     METHOD_RETURN();
 }

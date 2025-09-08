@@ -23,7 +23,29 @@ namespace fibjs {
 
 result_t http_base::fileHandler(exlib::string root, bool autoIndex, obj_ptr<Handler_base>& retVal)
 {
-    retVal = new HttpFileHandler(root, autoIndex);
+    return HttpFileHandler::create(root, autoIndex, retVal);
+}
+
+result_t HttpFileHandler::create(exlib::string root, bool autoIndex, obj_ptr<Handler_base>& retVal)
+{
+    exlib::string root_;
+    obj_ptr<Stat_base> stat;
+
+    path_base::normalize(root, root_);
+    result_t hr = fs_base::ac_stat(root_, stat);
+    if (hr != 0)
+        return hr;
+
+    bool isDir;
+    stat->isDirectory(isDir);
+
+    retVal = new HttpFileHandler(root_, isDir, autoIndex);
+    return 0;
+}
+
+result_t HttpFileHandler::isRouting(bool& retVal)
+{
+    retVal = true;
     return 0;
 }
 
@@ -44,7 +66,7 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             req->get_response(m_rep);
             m_req->get_value(m_value);
 
-            if (m_value.empty()) {
+            if (m_value.empty() || !m_pThis->m_isDir) {
                 m_url = m_pThis->m_root;
                 next(start);
                 return;
@@ -70,7 +92,7 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
         {
             m_path = m_url;
 
-            if (isPathSlash(m_path.c_str()[m_path.length() - 1])) {
+            if (isPathSlash(m_path[m_path.length() - 1])) {
                 m_path.append("index.html", 10);
                 m_index = true;
             }
@@ -96,6 +118,7 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             static char padding[] = "                                                              ";
             exlib::string s;
             obj_ptr<Buffer_base> buf;
+            int32_t write_len;
 
             length = m_dir->length();
 
@@ -107,12 +130,12 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
                     + m_value + "</title></head>\n<body bgcolor=white>\n<h1>Index of "
                     + m_value + "</h1><hr><pre>";
                 buf = new Buffer(s.c_str(), s.length());
-                m_file->cc_write(buf);
+                m_file->cc_write(buf, write_len);
 
                 if (m_value.length() > 1) {
                     s = "<a href=\"../\">../</a>\n";
                     buf = new Buffer(s.c_str(), s.length());
-                    m_file->cc_write(buf);
+                    m_file->cc_write(buf, write_len);
                 }
             } else {
                 exlib::string name, ds, ss;
@@ -127,17 +150,17 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
                     name += '/';
                 s = "<a href=\"" + name + "\">" + name + "</a>";
                 buf = new Buffer(s.c_str(), s.length());
-                m_file->cc_write(buf);
+                m_file->cc_write(buf, write_len);
                 padding_len = 40 - (int32_t)name.length();
                 if (padding_len < 1)
                     padding_len = 1;
                 buf = new Buffer(padding, padding_len);
-                m_file->cc_write(buf);
+                m_file->cc_write(buf, write_len);
 
                 m_stat->get_mtime(d);
                 d.sqlString(ds);
                 buf = new Buffer(ds.c_str(), ds.length());
-                m_file->cc_write(buf);
+                m_file->cc_write(buf, write_len);
 
                 m_stat->get_size(sz);
                 ss = niceSize((int64_t)sz);
@@ -145,19 +168,19 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
                 if (padding_len < 1)
                     padding_len = 1;
                 buf = new Buffer(padding, padding_len);
-                m_file->cc_write(buf);
+                m_file->cc_write(buf, write_len);
                 ss.append(1, '\n');
                 buf = new Buffer(ss.c_str(), ss.length());
-                m_file->cc_write(buf);
+                m_file->cc_write(buf, write_len);
             }
 
             if (m_dirPos >= length) {
                 buf = new Buffer("</pre><hr></body>\n</html>");
-                m_file->cc_write(buf);
+                m_file->cc_write(buf, write_len);
                 m_file->rewind();
 
                 m_rep->set_body(m_file);
-                m_rep->addHeader("Content-Type", "text/html");
+                m_rep->appendHeader("Content-Type", "text/html");
 
                 return next(CALL_RETURN_NULL);
             }
@@ -177,11 +200,11 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
         {
 
             if (m_index)
-                m_rep->addHeader("Content-Type", "text/html");
+                m_rep->appendHeader("Content-Type", "text/html");
             else {
                 exlib::string type;
                 mime_base::getType(m_url, type);
-                m_rep->addHeader("Content-Type", type);
+                m_rep->appendHeader("Content-Type", type);
             }
 
             return m_file->stat(m_stat, next(stat));
@@ -211,7 +234,7 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
 
             d.toGMTString(lastModified);
 
-            m_rep->addHeader("Last-Modified", lastModified);
+            m_rep->appendHeader("Last-Modified", lastModified);
 
             exlib::string range;
             if (m_req->firstHeader("Range", range) != CALL_RETURN_NULL) {
@@ -240,7 +263,7 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
 
                 char s[256];
                 snprintf(s, sizeof(s), "bytes %" PRId64 "-%" PRId64 "/%" PRId64 "", bpos, epos - 1, fsz);
-                m_rep->addHeader("Content-Range", s);
+                m_rep->appendHeader("Content-Range", s);
 
                 m_rep->set_body(stm);
 

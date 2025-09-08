@@ -13,6 +13,8 @@ var http = require('http');
 var io = require('io');
 var os = require('os');
 
+const isWin32 = process.platform === "win32";
+
 var envKeys = require('./process/const.env_keys.js');
 
 describe("child_process", () => {
@@ -117,27 +119,6 @@ describe("child_process", () => {
             assert.closeTo(offsets[1], 2000, 1000);
         });
 
-        if (process.platform != "win32")
-            it("pty output", () => {
-                var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec.stdout.js')], {
-                    stdio: 'pty'
-                });
-                var stdout = new io.BufferedStream(bs.stdout);
-
-                assert.equal(stdout.readLine(), "exec testing....\r");
-
-                var t0 = new Date().getTime();
-
-                stdout.readLine();
-                var offsets = []
-                offsets[0] = new Date().getTime() - t0;
-                assert.closeTo(offsets[0], 1000, 500);
-
-                stdout.readLine();
-                offsets[1] = new Date().getTime() - t0;
-                assert.closeTo(offsets[1], 2000, 1000);
-            });
-
         it("console stdout output", () => {
             var status = child_process.run(cmd, [path.join(__dirname, 'process', 'exec.stdout.js')]);
             assert.equal(status, 0);
@@ -156,6 +137,224 @@ describe("child_process", () => {
             var str1 = bs.stdout.read(100).toString();
             assert.equal(str, str1);
         })
+    });
+
+    describe("pty", () => {
+        it("basic pty functionality", () => {
+            var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec.stdout.js')], {
+                stdio: 'pty'
+            });
+            var stdout = new io.BufferedStream(bs.stdout);
+
+            // Function to strip ANSI escape sequences for ConPTY compatibility
+            function stripAnsi(str) {
+                return str.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '');
+            }
+
+            if (isWin32) {
+                var line = stdout.readLine();
+                var cleanLine = stripAnsi(line);
+                assert.equal(cleanLine, "exec testing....");
+            } else
+                assert.equal(stdout.readLine(), "exec testing....\r");
+
+            var t0 = new Date().getTime();
+
+            stdout.readLine();
+            var offsets = []
+            offsets[0] = new Date().getTime() - t0;
+            assert.closeTo(offsets[0], 1000, 500);
+
+            stdout.readLine();
+            offsets[1] = new Date().getTime() - t0;
+            assert.closeTo(offsets[1], 2000, 1000);
+        });
+
+        it("pty with custom initial size", () => {
+            var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'pty_simple_test.js')], {
+                stdio: 'pty',
+                cols: 100,
+                rows: 30
+            });
+
+            // Check that the process has the specified dimensions
+            assert.equal(bs.cols, 100);
+            assert.equal(bs.rows, 30);
+
+            var stdout = new io.BufferedStream(bs.stdout);
+
+            // Function to strip ANSI escape sequences for ConPTY compatibility
+            function stripAnsi(str) {
+                return str.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '');
+            }
+
+            if (isWin32) {
+                var line = stdout.readLine();
+                var cleanLine = stripAnsi(line);
+                assert.equal(cleanLine, "PTY_TEST_OUTPUT");
+            } else {
+                assert.equal(stdout.readLine(), "PTY_TEST_OUTPUT\r");
+            }
+
+            bs.join();
+            assert.equal(bs.exitCode, 42);
+        });
+
+        it("pty default size", () => {
+            var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'pty_simple_test.js')], {
+                stdio: 'pty'
+            });
+
+            // Default size should be 80x24
+            assert.equal(bs.cols, 80);
+            assert.equal(bs.rows, 24);
+
+            bs.join();
+        });
+
+        it("pty resize functionality", () => {
+            var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'pty_resize_test.js')], {
+                stdio: 'pty',
+                cols: 80,
+                rows: 24
+            });
+            var stdout = new io.BufferedStream(bs.stdout);
+
+            // Check initial size
+            assert.equal(bs.cols, 80);
+            assert.equal(bs.rows, 24);
+
+            // Read initial size output
+            var initialLine = stdout.readLine();
+            if (isWin32) {
+                // Strip ANSI sequences for Windows ConPTY
+                initialLine = initialLine.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '');
+            } else {
+                // Remove carriage return for Unix PTY
+                initialLine = initialLine.replace(/\r$/, '');
+            }
+            assert.equal(initialLine, "RESIZE:80x24");
+
+            // Resize the PTY
+            bs.resize(120, 40);
+
+            // Check that resize was successful
+            assert.equal(bs.cols, 120);
+            assert.equal(bs.rows, 40);
+
+            // Read resize notification (may take a moment to appear)
+            var resizeLine;
+            var attempts = 0;
+            while (attempts < 10) {
+                try {
+                    resizeLine = stdout.readLine();
+                    if (isWin32) {
+                        resizeLine = resizeLine.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '');
+                    } else {
+                        resizeLine = resizeLine.replace(/\r$/, '');
+                    }
+                    if (resizeLine.includes("RESIZE:120x40")) {
+                        break;
+                    }
+                } catch (e) {
+                    coroutine.sleep(100);
+                    attempts++;
+                }
+            }
+
+            // Should have received resize notification
+            assert.ok(resizeLine && resizeLine.includes("RESIZE:120x40"), `Expected resize notification, got: ${resizeLine}`);
+
+            // Test another resize
+            bs.resize(60, 20);
+            assert.equal(bs.cols, 60);
+            assert.equal(bs.rows, 20);
+
+            // Clean up
+            bs.kill();
+            bs.join();
+        });
+
+        it("pty resize with invalid parameters", () => {
+            var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'pty_simple_test.js')], {
+                stdio: 'pty',
+                cols: 80,
+                rows: 24
+            });
+
+            // Test invalid resize parameters
+            assert.throws(() => {
+                bs.resize(0, 24);
+            });
+
+            assert.throws(() => {
+                bs.resize(80, 0);
+            });
+
+            assert.throws(() => {
+                bs.resize(-10, 24);
+            });
+
+            assert.throws(() => {
+                bs.resize(80, -5);
+            });
+
+            // Valid resize should work
+            assert.doesNotThrow(() => {
+                bs.resize(80, 24);
+            });
+
+            bs.join();
+        });
+
+        it("pty resize on non-pty process should fail", () => {
+            var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'pty_simple_test.js')], {
+                stdio: 'pipe'
+            });
+
+            // Resize should fail on non-PTY process
+            assert.throws(() => {
+                bs.resize(80, 24);
+            });
+
+            bs.join();
+        });
+
+        it("cols and rows getters", () => {
+            var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'pty_simple_test.js')], {
+                stdio: 'pty',
+                cols: 90,
+                rows: 35
+            });
+
+            // Check getter properties
+            assert.equal(bs.cols, 90);
+            assert.equal(bs.rows, 35);
+
+            // Resize and check again
+            bs.resize(110, 50);
+            assert.equal(bs.cols, 110);
+            assert.equal(bs.rows, 50);
+
+            bs.join();
+        });
+
+        it("cols and rows getters on non-pty process", () => {
+            var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'pty_simple_test.js')], {
+                stdio: 'pipe'
+            });
+
+            // cols and rows should throw error for non-PTY processes
+            assert.throws(() => {
+                var cols = bs.cols;
+            }, /cols property only available in PTY mode/);
+
+            assert.throws(() => {
+                var rows = bs.rows;
+            }, /rows property only available in PTY mode/);
+
+            bs.join();
+        });
     });
 
     it("stdin/stdout", () => {
@@ -184,7 +383,7 @@ describe("child_process", () => {
             var ret = child_process.exec("echo hello");
             assert.equal(ret.stdout, "hello" + os.EOL);
 
-            if (process.platform == "win32") {
+            if (isWin32) {
                 var ret = child_process.exec(`echo "hello world"`);
                 assert.equal(ret.stdout, `"hello world"\r\n`);
 
@@ -223,6 +422,129 @@ describe("child_process", () => {
 
             assert.throws(() => {
                 $`echo1 100`;
+            });
+        });
+
+        it("execSync", () => {
+            // Test successful execSync
+            var ret = child_process.execSync("echo hello");
+            assert.equal(ret, "hello" + os.EOL);
+
+            // Test execSync with encoding
+            var ret = child_process.execSync("echo world", { encoding: 'utf8' });
+            assert.equal(ret, "world" + os.EOL);
+
+            // Test execSync error case
+            assert.throws(() => {
+                child_process.execSync("exit 1");
+            }, (error) => {
+                assert.equal(error.status, 1);
+                assert.equal(error.signal, null);
+                assert.ok(error.hasOwnProperty('stdout'));
+                assert.ok(error.hasOwnProperty('stderr'));
+                assert.ok(error.hasOwnProperty('output'));
+                assert.equal(error.output.length, 3);
+                assert.equal(error.output[0], null);
+                return true;
+            });
+
+            // Test execSync with command not found
+            assert.throws(() => {
+                child_process.execSync("nonexistent_command_12345");
+            }, (error) => {
+                if (isWin32) {
+                    assert.equal(error.status, 1);
+                } else {
+                    assert.equal(error.status, 127);
+                }
+                assert.equal(error.signal, null);
+                assert.ok(error.stderr.includes("command not found") ||
+                    error.stderr.includes("not found") ||
+                    error.stderr.includes("not recognized"));
+                return true;
+            });
+
+            if (isWin32) {
+                var ret = child_process.execSync(`echo "hello world"`);
+                assert.equal(ret, `"hello world"\r\n`);
+            } else {
+                var ret = child_process.execSync(`echo "hello world"`);
+                assert.equal(ret, `hello world\n`);
+            }
+        });
+
+        it("execFileSync", () => {
+            // Test successful execFileSync
+            var ret = child_process.execFileSync(cmd, [
+                path.join(__dirname, "process", "exec_sync_success.js")
+            ]);
+            assert.equal(ret, "execSync success output" + os.EOL);
+
+            // Test execFileSync with encoding
+            var ret = child_process.execFileSync(cmd, [
+                path.join(__dirname, "process", "exec_sync_success.js")
+            ], { encoding: 'utf8' });
+            assert.equal(ret, "execSync success output" + os.EOL);
+
+            // Test execFileSync with arguments
+            var ret = child_process.execFileSync(cmd, [
+                path.join(__dirname, "process", "exec_file_sync.js"),
+                "arg1", "arg2"
+            ]);
+            assert.ok(ret.includes('["arg1","arg2"]'));
+
+            // Test execFileSync error case
+            assert.throws(() => {
+                child_process.execFileSync(cmd, [
+                    path.join(__dirname, "process", "exec_sync_error.js")
+                ]);
+            }, (error) => {
+                assert.equal(error.status, 1);
+                assert.equal(error.signal, null);
+                assert.ok(error.stdout.includes("execSync stdout before error"));
+                assert.ok(error.stderr.includes("execSync stderr error message"));
+                assert.ok(error.hasOwnProperty('output'));
+                assert.equal(error.output.length, 3);
+                assert.equal(error.output[0], null);
+                return true;
+            });
+
+            // Test execFileSync with different exit code
+            assert.throws(() => {
+                child_process.execFileSync(cmd, [
+                    path.join(__dirname, "process", "exec_file_sync_error.js")
+                ]);
+            }, (error) => {
+                assert.equal(error.status, 42);
+                assert.equal(error.signal, null);
+                assert.ok(error.stdout.includes("execFileSync stdout"));
+                assert.ok(error.stderr.includes("execFileSync stderr"));
+                return true;
+            });
+
+            // Test execFileSync with stdio inherit
+            var ret = child_process.execFileSync(cmd, [
+                path.join(__dirname, "process", "exec_sync_success.js")
+            ], {
+                stdio: "inherit"
+            });
+            assert.equal(ret, null);
+
+            // Test execFileSync with env option
+            assert.throws(() => {
+                child_process.execFileSync(cmd, [
+                    path.join(__dirname, "process", "exec4.js")
+                ], {
+                    env: {
+                        QEMU_LD_PREFIX: process.env.QEMU_LD_PREFIX,
+                        test_env_var: "test_value"
+                    }
+                });
+            }, (error) => {
+                assert.equal(error.status, 4);
+                var env = json.decode(error.stdout);
+                assert.equal(env.test_env_var, "test_value");
+                return true;
             });
         });
     }
@@ -294,6 +616,7 @@ describe("child_process", () => {
     describe('process holding', () => {
         it("multi fiber", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec7.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "100");
             p.join();
@@ -302,6 +625,7 @@ describe("child_process", () => {
 
         it("pendding callback", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec8.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "200");
             p.join();
@@ -310,6 +634,7 @@ describe("child_process", () => {
 
         it("setTimeout", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec9.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "300");
             p.join();
@@ -318,6 +643,7 @@ describe("child_process", () => {
 
         it("setTimeout unref", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec9.1.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "301");
             p.join();
@@ -326,6 +652,7 @@ describe("child_process", () => {
 
         it("setTimeout ref", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec9.2.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "302");
             p.join();
@@ -334,6 +661,7 @@ describe("child_process", () => {
 
         it("setInterval", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec10.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "400");
             p.join();
@@ -342,6 +670,7 @@ describe("child_process", () => {
 
         it("setImmediate", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec11.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "500");
             p.join();
@@ -350,6 +679,7 @@ describe("child_process", () => {
 
         it("websocket connect", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec18.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             p.join();
             assert.equal(p.exitCode, 81);
@@ -367,6 +697,7 @@ describe("child_process", () => {
             httpd.start();
 
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec19.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "1900");
             p.join();
@@ -375,6 +706,7 @@ describe("child_process", () => {
 
         it("worker", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec20.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "2000");
             p.join();
@@ -383,6 +715,7 @@ describe("child_process", () => {
 
         it("bugfix: multi fiber async", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec12.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
             assert.equal(stdout.readLine(), "600");
             p.join();
@@ -391,6 +724,7 @@ describe("child_process", () => {
 
         it("tcp server", () => {
             var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec21.js')]);
+            assert.isNull(p.exitCode);
             var stdout = new io.BufferedStream(p.stdout);
 
             for (var i = 0; i < 100; i++) {
@@ -420,8 +754,10 @@ describe("child_process", () => {
         var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec.js')], {
             stdio: 'inherit'
         });
+        assert.isFalse(p.killed);
         coroutine.sleep(500);
         p.kill(15);
+        assert.isTrue(p.killed);
         p.join();
         assert.lessThan(new Date().getTime() - t1, 2000);
     });
@@ -481,7 +817,7 @@ describe("child_process", () => {
         assert.equal(result.stdout, result.output[1]);
         assert.equal(result.stderr, result.output[2]);
 
-        if (process.platform == "win32") {
+        if (isWin32) {
             assert.equal(result.stdout, "stdout output.\r\n");
             assert.equal(result.stderr, "stderr output.\r\n");
         } else {
@@ -641,6 +977,226 @@ describe("child_process", () => {
             ]);
         });
 
+        it("spawn", () => {
+            var spawnEventTriggered = false;
+            var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec_spawn_event.js')]);
+
+            p.on('spawn', () => {
+                spawnEventTriggered = true;
+            });
+
+            var stdout = new io.BufferedStream(p.stdout);
+            assert.equal(stdout.readLine(), "spawn event test process started");
+
+            p.join();
+            assert.equal(p.exitCode, 0);
+            assert.equal(spawnEventTriggered, true);
+        });
+
+        it("spawn event timing", () => {
+            var spawnEventTriggered = false;
+            var spawnEventTime = 0;
+            var processStartTime = new Date().getTime();
+
+            var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec_spawn_timing.js')]);
+
+            p.on('spawn', () => {
+                spawnEventTriggered = true;
+                spawnEventTime = new Date().getTime();
+            });
+
+            var stdout = new io.BufferedStream(p.stdout);
+            assert.equal(stdout.readLine(), "process started");
+
+            // spawn event should have been triggered by now
+            assert.equal(spawnEventTriggered, true);
+
+            // spawn event should be triggered quickly after process creation
+            assert.lessThan(spawnEventTime - processStartTime, 1000);
+
+            assert.equal(stdout.readLine(), "process ending");
+            p.join();
+            assert.equal(p.exitCode, 42);
+        });
+
+        it("spawn event with fork", () => {
+            var spawnEventTriggered = false;
+            var p = child_process.fork(path.join(__dirname, 'process', 'exec_spawn_event.js'), {
+                stdio: "pipe"
+            });
+
+            p.on('spawn', () => {
+                spawnEventTriggered = true;
+            });
+
+            var stdout = new io.BufferedStream(p.stdout);
+            assert.equal(stdout.readLine(), "spawn event test process started");
+
+            p.join();
+            assert.equal(p.exitCode, 0);
+            assert.equal(spawnEventTriggered, true);
+        });
+
+        it("spawn event with multiple listeners", () => {
+            var spawnCount = 0;
+            var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec_spawn_event.js')]);
+
+            p.on('spawn', () => {
+                spawnCount++;
+            });
+
+            p.on('spawn', () => {
+                spawnCount++;
+            });
+
+            var stdout = new io.BufferedStream(p.stdout);
+            assert.equal(stdout.readLine(), "spawn event test process started");
+
+            p.join();
+            assert.equal(p.exitCode, 0);
+            assert.equal(spawnCount, 2); // Both listeners should be called
+        });
+
+        it("spawn event should not trigger on failed spawn", () => {
+            var spawnEventTriggered = false;
+
+            try {
+                var p = child_process.spawn("non_existent_command");
+
+                p.on('spawn', () => {
+                    spawnEventTriggered = true;
+                });
+
+                p.join();
+            } catch (e) {
+                // Expected to fail
+            }
+
+            // spawn event should not be triggered for failed process creation
+            assert.equal(spawnEventTriggered, false);
+        });
+
+        it("close event with pipe stdio", () => {
+            var closeEventTriggered = false;
+            var closeCode = null;
+            var closeSignal = null;
+
+            var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec_close_event.js')], {
+                stdio: 'pipe'
+            });
+
+            p.on('close', (code, signal) => {
+                closeEventTriggered = true;
+                closeCode = code;
+                closeSignal = signal;
+            });
+
+            p.join();
+            coroutine.sleep(100); // Allow time for close event to be processed
+
+            // close event should be triggered
+            assert.equal(closeEventTriggered, true);
+            assert.equal(closeCode, 42);
+            assert.equal(closeSignal, null);
+        });
+
+        it("close event with inherit stdio", () => {
+            var closeEventTriggered = false;
+            var closeCode = null;
+
+            var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec_close_immediate.js')], {
+                stdio: 'inherit'
+            });
+
+            p.on('close', (code, signal) => {
+                closeEventTriggered = true;
+                closeCode = code;
+            });
+
+            p.join();
+            coroutine.sleep(100); // Allow time for close event to be processed
+
+            // close event should be triggered
+            assert.equal(closeEventTriggered, true);
+            assert.equal(closeCode, 123);
+        });
+
+        it("close event with ipc stdio", () => {
+            var closeEventTriggered = false;
+            var closeCode = null;
+            var messageReceived = false;
+
+            var p = child_process.fork(path.join(__dirname, 'process', 'exec_close_ipc.js'), {
+                stdio: 'pipe'
+            });
+
+            p.on('close', (code, signal) => {
+                closeEventTriggered = true;
+                closeCode = code;
+            });
+
+            p.on('message', (msg) => {
+                if (msg === 'ready') {
+                    messageReceived = true;
+                    // Send exit message after receiving ready
+                    setTimeout(() => {
+                        p.send('exit');
+                    }, 10);
+                }
+            });
+
+            p.join();
+            coroutine.sleep(100); // Allow time for close event to be processed
+
+            assert.equal(messageReceived, true);
+
+            // close event should be triggered
+            assert.equal(closeEventTriggered, true);
+            assert.equal(closeCode, 0);
+        });
+
+        it("close event timing", () => {
+            var closeEventTime = 0;
+            var processEndTime = 0;
+
+            var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec_close_immediate.js')]);
+
+            p.on('close', () => {
+                closeEventTime = new Date().getTime();
+            });
+
+            p.join();
+            coroutine.sleep(100); // Allow time for close event to be processed
+            processEndTime = new Date().getTime();
+
+            // close event should be triggered before or at the same time as join() returns
+            assert.notGreaterThan(closeEventTime, processEndTime);
+        });
+
+        it("close event with multiple listeners", () => {
+            var closeCount = 0;
+            var totalCode = 0;
+
+            var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec_close_immediate.js')]);
+
+            p.on('close', (code) => {
+                closeCount++;
+                totalCode += code;
+            });
+
+            p.on('close', (code) => {
+                closeCount++;
+                totalCode += code;
+            });
+
+            p.join();
+            coroutine.sleep(100); // Allow time for close event to be processed
+
+            // Both listeners should be called
+            assert.equal(closeCount, 2);
+            assert.equal(totalCode, 246); // 123 * 2
+        });
+
         if (process.platform != "win32")
             it("SIGINT", () => {
                 var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'signal1.js')]);
@@ -750,6 +1306,140 @@ describe("child_process", () => {
     xit("print child process's env items", () => {
         var retcode = child_process.run(cmd, [path.join(__dirname, 'process', 'exec.print_kvs.js')]);
         assert.equal(retcode, 0)
+    });
+
+    describe("signal option", () => {
+        it("spawn with already aborted signal", () => {
+            var controller = new AbortController();
+            controller.abort();
+
+            var result = child_process.spawn(cmd, [
+                path.join(__dirname, "process", "exec_signal_test.js")
+            ], {
+                signal: controller.signal
+            });
+
+            assert.notEqual(result.pid, 0);
+            result.join();
+            assert.strictEqual(result.killed, true);
+        });
+
+        it("spawn with signal aborted during execution", () => {
+            var controller = new AbortController();
+
+            // Abort the signal after a short delay
+            setTimeout(() => {
+                controller.abort();
+            }, 100);
+
+            var result = child_process.spawn(cmd, [
+                path.join(__dirname, "process", "exec_long_running.js")
+            ], {
+                signal: controller.signal
+            });
+
+            assert.notEqual(result.pid, 0);
+            assert.strictEqual(result.exitCode, null);
+            result.join();
+            assert.strictEqual(result.killed, true);
+        });
+
+        it("spawn with signal never aborted", () => {
+            var controller = new AbortController();
+
+            var result = child_process.spawn(cmd, [
+                path.join(__dirname, "process", "exec2.js"),
+                "arg1",
+                "arg2"
+            ], {
+                signal: controller.signal
+            });
+
+            // Normal execution should work fine
+            assert.notEqual(result.pid, 0);
+            assert.strictEqual(result.exitCode, null);
+            result.join();
+            assert.strictEqual(result.killed, false);
+            assert.deepEqual(JSON.parse(result.stdout.read().toString()), [
+                cmd, path.join(__dirname, "process", "exec2.js"), "arg1", "arg2"
+            ]);
+        });
+
+        it("spawn signal abort sends SIGTERM to child process", () => {
+            var controller = new AbortController();
+
+            // Start a long-running process and abort it
+            setTimeout(() => {
+                controller.abort();
+            }, 100);
+
+            var result = child_process.spawn(cmd, [
+                path.join(__dirname, "process", "exec_long_running.js")
+            ], {
+                signal: controller.signal,
+                encoding: 'utf8'
+            });
+
+            assert.notEqual(result.pid, 0);
+            assert.strictEqual(result.exitCode, null);
+            result.join();
+            assert.strictEqual(result.killed, true);
+        });
+
+        it("spawn with signal option encoding", () => {
+            var controller = new AbortController();
+            controller.abort();
+
+            var result = child_process.spawn(cmd, [
+                path.join(__dirname, "process", "exec_signal_test.js")
+            ], {
+                signal: controller.signal,
+                encoding: 'utf8'
+            });
+
+            assert.notEqual(result.pid, 0);
+            assert.strictEqual(result.exitCode, null);
+            result.join();
+            assert.strictEqual(result.killed, true);
+        });
+    });
+
+    it("unref", () => {
+        var t1 = new Date().getTime();
+        // Start the main script that will spawn child process and call unref
+        var p = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec.unref_main.js')], {
+            stdio: 'pipe'
+        });
+
+        var stdout = new io.BufferedStream(p.stdout);
+        var output = stdout.readLines();
+
+        // Find "main process exit" message
+        var mainExitIndex = -1;
+        for (var i = 0; i < output.length; i++) {
+            if (output[i] === "main process exit") {
+                mainExitIndex = i;
+                break;
+            }
+        }
+
+        // Verify that "main process exit" message exists
+        assert.notEqual(mainExitIndex, -1, "main process exit message should be found");
+
+        // Verify that "main process exit" is not the first output
+        assert.greaterThan(mainExitIndex, 0, "main process exit should not be the first output");
+
+        // Verify that "main process exit" is not the last output
+        assert.lessThan(mainExitIndex, output.length - 1, "main process exit should not be the last output");
+
+        var hasChildOutput = false;
+        for (var i = 0; i < output.length; i++) {
+            if (output[i].includes("sub process running")) {
+                hasChildOutput = true;
+                break;
+            }
+        }
+        assert.isTrue(hasChildOutput, "should have child process output");
     });
 });
 

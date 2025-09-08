@@ -84,7 +84,7 @@ inline void Condition_base::__new(const v8::FunctionCallbackInfo<v8::Value>& arg
 
     ARG(obj_ptr<Lock_base>, 0);
 
-    hr = _new(v0, vr, args.This());
+    hr = _new(v0.get(), vr, args.This());
 
     CONSTRUCT_RETURN();
 }
@@ -95,15 +95,11 @@ inline result_t Condition_base::load(Isolate* isolate, v8::Local<v8::Value> v, o
 
     LOAD_ENTER();
 
-    METHOD_OVER(0, 0);
-
-    hr = _new(vr, args.This());
-
     METHOD_OVER(1, 1);
 
     ARG(obj_ptr<Lock_base>, 0);
 
-    hr = _new(v0, vr, args.This());
+    hr = _new(v0.get(), vr, args.This());
 
     LOAD_RETURN();
 }
@@ -113,7 +109,7 @@ inline void Condition_base::s_wait(const v8::FunctionCallbackInfo<v8::Value>& ar
     bool vr;
 
     ASYNC_METHOD_INSTANCE(Condition_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("Condition.wait");
 
     METHOD_OVER(1, 0);
 

@@ -45,8 +45,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<xml_base>& retVal)
@@ -114,7 +113,7 @@ inline void xml_base::s_static_parse(const v8::FunctionCallbackInfo<v8::Value>& 
     ARG(obj_ptr<Buffer_base>, 0);
     OPT_ARG(exlib::string, 1, "text/xml");
 
-    hr = parse(v0, v1, vr);
+    hr = parse(v0.get(), v1, vr);
 
     METHOD_RETURN();
 }
@@ -129,7 +128,7 @@ inline void xml_base::s_static_serialize(const v8::FunctionCallbackInfo<v8::Valu
 
     ARG(obj_ptr<XmlNode_base>, 0);
 
-    hr = serialize(v0, vr);
+    hr = serialize(v0.get(), vr);
 
     METHOD_RETURN();
 }

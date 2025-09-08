@@ -89,8 +89,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<console_base>& retVal)
@@ -640,7 +639,7 @@ inline void console_base::s_static_readLine(const v8::FunctionCallbackInfo<v8::V
 {
     exlib::string vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("console.readLine");
 
     METHOD_OVER(1, 0);
 
@@ -658,7 +657,7 @@ inline void console_base::s_static_getpass(const v8::FunctionCallbackInfo<v8::Va
 {
     exlib::string vr;
 
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("console.getpass");
 
     METHOD_OVER(1, 0);
 

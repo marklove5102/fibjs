@@ -21,6 +21,7 @@ class Stream_base;
 
 class process_base : public EventEmitter_base {
     DECLARE_CLASS(process_base);
+    EVENT_SUPPORT();
 
 public:
     // process_base
@@ -51,6 +52,7 @@ public:
     static result_t uptime(double& retVal);
     static result_t cpuUsage(v8::Local<v8::Object> previousValue, v8::Local<v8::Object>& retVal);
     static result_t memoryUsage(v8::Local<v8::Object>& retVal);
+    static result_t resourceUsage(v8::Local<v8::Object>& retVal);
     static result_t nextTick(v8::Local<v8::Function> func, OptArgs args);
     static result_t binding(exlib::string name, v8::Local<v8::Value>& retVal);
     static result_t getgid(int32_t& retVal);
@@ -68,8 +70,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<process_base>& retVal)
@@ -100,6 +101,7 @@ public:
     static void s_static_uptime(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_cpuUsage(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_memoryUsage(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_resourceUsage(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_nextTick(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_binding(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_getgid(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -128,6 +130,7 @@ inline ClassInfo& process_base::class_info()
         { "uptime", s_static_uptime, true, ClassData::ASYNC_SYNC },
         { "cpuUsage", s_static_cpuUsage, true, ClassData::ASYNC_SYNC },
         { "memoryUsage", s_static_memoryUsage, true, ClassData::ASYNC_SYNC },
+        { "resourceUsage", s_static_resourceUsage, true, ClassData::ASYNC_SYNC },
         { "nextTick", s_static_nextTick, true, ClassData::ASYNC_SYNC },
         { "binding", s_static_binding, true, ClassData::ASYNC_SYNC },
         { "getgid", s_static_getgid, true, ClassData::ASYNC_SYNC },
@@ -498,6 +501,19 @@ inline void process_base::s_static_memoryUsage(const v8::FunctionCallbackInfo<v8
     METHOD_OVER(0, 0);
 
     hr = memoryUsage(vr);
+
+    METHOD_RETURN();
+}
+
+inline void process_base::s_static_resourceUsage(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    v8::Local<v8::Object> vr;
+
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = resourceUsage(vr);
 
     METHOD_RETURN();
 }

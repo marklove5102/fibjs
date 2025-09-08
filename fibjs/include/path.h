@@ -74,7 +74,7 @@ public:
         if (is_root || base.empty())
             base = c_str;
         else {
-            if (!isWin32PathSlash(base.c_str()[base.length() - 1]))
+            if (!isWin32PathSlash(base[base.length() - 1]))
                 base.append(1, PATH_SLASH_WIN32);
 
             base.append(c_str);
@@ -100,7 +100,7 @@ public:
         if (isPosixPathSlash(c_str[0]) || m_buf.empty())
             m_buf = other;
         else {
-            if (!isPosixPathSlash(m_buf.c_str()[m_buf.length() - 1]))
+            if (!isPosixPathSlash(m_buf[m_buf.length() - 1]))
                 m_buf.append(1, PATH_SLASH_POSIX);
 
             m_buf.append(other);
@@ -113,13 +113,13 @@ public:
             return;
 
         if (m_buf.length() == 0 && other.length() == 2
-            && isWin32PathSlash(other.c_str()[0]) && isWin32PathSlash(other.c_str()[1])) {
+            && isWin32PathSlash(other[0]) && isWin32PathSlash(other[1])) {
             m_buf.append(1, PATH_SLASH_WIN32);
             return;
-        } else if (m_buf.length() == 1 && isWin32PathSlash(m_buf.c_str()[0])) {
-            if (isWin32PathSlash(other.c_str()[0]))
+        } else if (m_buf.length() == 1 && isWin32PathSlash(m_buf[0])) {
+            if (isWin32PathSlash(other[0]))
                 m_buf.clear();
-        } else if (m_buf.length() > 0 && !isWin32PathSlash(m_buf.c_str()[m_buf.length() - 1]))
+        } else if (m_buf.length() > 0 && !isWin32PathSlash(m_buf[m_buf.length() - 1]))
             m_buf.append(1, PATH_SLASH_WIN32);
 
         m_buf.append(other);
@@ -130,7 +130,7 @@ public:
         if (other.empty())
             return;
 
-        if (m_buf.length() > 0 && !isPosixPathSlash(m_buf.c_str()[m_buf.length() - 1]))
+        if (m_buf.length() > 0 && !isPosixPathSlash(m_buf[m_buf.length() - 1]))
             m_buf.append(1, PATH_SLASH_POSIX);
 
         m_buf.append(other);
@@ -334,7 +334,14 @@ inline void _path_array_win32(exlib::string path, std::vector<exlib::string>& a,
 
     if (drv_no == 0 && (int32_t)a.size() > 2 && a[0].empty() && a[1].empty()) {
         domain = a[2];
-        if (!domain.empty()) {
+
+        // Check if this is a device namespace path (\\.\\ or \\?\\)
+        if (domain == "." || domain == "?") {
+            // For device namespace paths, don't treat as UNC
+            // Keep the domain but don't set share or erase elements
+            // This preserves the device namespace structure
+        } else if (!domain.empty()) {
+            // Regular UNC path (\\server\share)
             i = 3;
             while (i < (int32_t)a.size() && a[i].empty())
                 i++;
@@ -356,8 +363,80 @@ inline result_t _normalize_win32(exlib::string path, exlib::string& retVal, bool
     exlib::string domain;
     exlib::string share;
 
+    // Check if original path has trailing backslash
+    bool hasTrailingSlash = !path.empty() && isWin32PathSlash(path[path.length() - 1]);
+
     _path_array_win32(path, a, drv_no, domain, share);
-    _normalize_array(a, removeSlash);
+
+    // Check if this is a device namespace path
+    bool isDeviceNamespace = !domain.empty() && (domain == "." || domain == "?") && share.empty();
+
+    if (isDeviceNamespace) {
+        // For device namespace paths, we need special handling
+        // The structure should be preserved as: \\.\<rest> or \\?\<rest>
+        // Don't let _normalize_array remove the . or ? characters
+
+        // Create a modified array for normalization that excludes the device namespace prefix
+        std::vector<exlib::string> normalizeArray;
+        // Skip the first three elements: ['', '', '.'] or ['', '', '?']
+        for (size_t idx = 3; idx < a.size(); idx++) {
+            normalizeArray.push_back(a[idx]);
+        }
+
+        // For device namespace paths, check platform-specific behavior
+#ifdef _WIN32
+        // On Windows, device namespace paths treat ".." as literal removal without navigation
+
+        std::vector<exlib::string> result;
+        for (size_t idx = 0; idx < normalizeArray.size(); idx++) {
+            const auto& segment = normalizeArray[idx];
+            if (segment == "." || segment == "..") {
+                // Remove both "." and ".." segments without navigation on Windows
+                continue;
+            } else if (!segment.empty()) {
+                // Keep all other non-empty segments
+                result.push_back(segment);
+            }
+        }
+#else
+        // On non-Windows platforms, apply normal navigation rules
+
+        std::vector<exlib::string> result;
+        for (size_t idx = 0; idx < normalizeArray.size(); idx++) {
+            const auto& segment = normalizeArray[idx];
+
+            if (segment == ".") {
+                // Skip "." segments
+                continue;
+            } else if (segment == "..") {
+                // Navigate up: remove the last segment if it exists
+                if (!result.empty() && result.back() != "..") {
+                    result.pop_back();
+                } else {
+                    // Can't navigate above device root, ignore ".."
+                }
+            } else if (!segment.empty()) {
+                // Keep all other non-empty segments
+                result.push_back(segment);
+            }
+        }
+#endif
+        normalizeArray = result;
+
+        // Reconstruct the full array with device namespace prefix
+        a.clear();
+        a.push_back(""); // First empty
+        a.push_back(""); // Second empty
+        a.push_back(domain); // . or ?
+        for (const auto& segment : normalizeArray) {
+            // Only add non-empty segments to avoid double slashes
+            if (!segment.empty() || normalizeArray.size() == 1) {
+                a.push_back(segment);
+            }
+        }
+    } else {
+        _normalize_array(a, removeSlash);
+    }
 
     retVal.clear();
 
@@ -370,16 +449,42 @@ inline result_t _normalize_win32(exlib::string path, exlib::string& retVal, bool
         retVal.append(domain);
         retVal.append(1, PATH_SLASH_WIN32);
         retVal.append(share);
+    } else if (isDeviceNamespace) {
+        // Handle device namespace paths
+        retVal.append(1, PATH_SLASH_WIN32);
+        retVal.append(1, PATH_SLASH_WIN32);
+        retVal.append(domain);
+        retVal.append(1, PATH_SLASH_WIN32);
     }
 
-    for (i = 0; i < (int32_t)a.size(); i++) {
-        if (i > 0)
+    // Add the rest of the path segments (skip first 3 for device namespace paths)
+    int startIdx = isDeviceNamespace ? 3 : 0;
+    for (i = startIdx; i < (int32_t)a.size(); i++) {
+        if (i > startIdx)
             retVal.append(1, PATH_SLASH_WIN32);
         retVal.append(a[i]);
     }
 
     if (root && a.size() == 1 && a[0].empty())
         retVal.append(1, PATH_SLASH_WIN32);
+
+    // Handle trailing backslash for device namespace paths
+    if (isDeviceNamespace) {
+#ifdef _WIN32
+        // On Windows, device namespace paths generally don't need trailing backslashes
+        // unless they are bare device paths like \\.\CON or \\.\folder with no subpaths
+        bool hasSubPaths = a.size() > 4; // More than ['', '', '.', 'folder']
+        if (!hasSubPaths && a.size() == 4 && !retVal.empty() && retVal[retVal.length() - 1] != PATH_SLASH_WIN32) {
+            // Only add trailing backslash for bare device folder paths like \\.\folder
+            retVal.append(1, PATH_SLASH_WIN32);
+        }
+#else
+        // On non-Windows platforms, preserve the trailing backslash only if it existed in the original path
+        if (hasTrailingSlash && !retVal.empty() && retVal[retVal.length() - 1] != PATH_SLASH_WIN32) {
+            retVal.append(1, PATH_SLASH_WIN32);
+        }
+#endif
+    }
 
     return 0;
 }
@@ -566,7 +671,7 @@ inline result_t _parse(exlib::string path, obj_ptr<NObject>& retVal)
         return 0;
     }
 
-    bool isAbsolute = path.c_str()[0] == CHAR_FORWARD_SLASH;
+    bool isAbsolute = path[0] == CHAR_FORWARD_SLASH;
     int start;
     if (isAbsolute) {
         ret->add("root", "/");
@@ -582,7 +687,7 @@ inline result_t _parse(exlib::string path, obj_ptr<NObject>& retVal)
     int preDotState = 0;
 
     for (; i >= start; --i) {
-        int code = path.c_str()[i];
+        int code = path[i];
         if (code == CHAR_FORWARD_SLASH) {
             if (!matchedSlash) {
                 startPart = i + 1;
@@ -635,9 +740,24 @@ inline result_t _parse_win32(exlib::string path, obj_ptr<NObject>& retVal)
         return 0;
     }
 
+    // Remove trailing path separators except for UNC paths and root paths
+    int originalLen = (int)path.length();
+    while (originalLen > 1 && isPathSeparator(path[originalLen - 1])) {
+        // Don't remove trailing separators for UNC paths like "\\server\" or drive roots like "C:\"
+        if (originalLen == 3 && qisascii(path[0]) && path[1] == ':')
+            break; // "C:\"
+        if (originalLen <= 3 && isPathSeparator(path[0]) && isPathSeparator(path[1]))
+            break; // UNC prefix
+        originalLen--;
+    }
+
+    if (originalLen != (int)path.length()) {
+        path = path.substr(0, originalLen);
+    }
+
     int len = (int)path.length();
     int rootEnd = 0;
-    int code = path.c_str()[0];
+    int code = path[0];
 
     if (len == 1) {
         if (isPathSeparator(code)) {
@@ -653,18 +773,18 @@ inline result_t _parse_win32(exlib::string path, obj_ptr<NObject>& retVal)
     }
     if (isPathSeparator(code)) {
         rootEnd = 1;
-        if (isPathSeparator(path.c_str()[1])) {
+        if (isPathSeparator(path[1])) {
             int j = 2;
             int last = j;
-            while (j < len && !isPathSeparator(path.c_str()[j]))
+            while (j < len && !isPathSeparator(path[j]))
                 j++;
             if (j < len && j != last) {
                 last = j;
-                while (j < len && isPathSeparator(path.c_str()[j]))
+                while (j < len && isPathSeparator(path[j]))
                     j++;
                 if (j < len && j != last) {
                     last = j;
-                    while (j < len && !isPathSeparator(path.c_str()[j]))
+                    while (j < len && !isPathSeparator(path[j]))
                         j++;
                     if (j == len)
                         rootEnd = j;
@@ -673,7 +793,7 @@ inline result_t _parse_win32(exlib::string path, obj_ptr<NObject>& retVal)
                 }
             }
         }
-    } else if (isWindowsDeviceRoot(code) && path.c_str()[1] == CHAR_COLON) {
+    } else if (isWindowsDeviceRoot(code) && path[1] == CHAR_COLON) {
         if (len <= 2) {
             ret->add("root", path);
             ret->add("dir", path);
@@ -682,7 +802,7 @@ inline result_t _parse_win32(exlib::string path, obj_ptr<NObject>& retVal)
             return 0;
         }
         rootEnd = 2;
-        if (isPathSeparator(path.c_str()[2])) {
+        if (isPathSeparator(path[2])) {
             if (len == 3) {
                 ret->add("root", path);
                 ret->add("dir", path);
@@ -705,7 +825,7 @@ inline result_t _parse_win32(exlib::string path, obj_ptr<NObject>& retVal)
     int preDotState = 0;
 
     for (; i >= rootEnd; --i) {
-        code = path.c_str()[i];
+        code = path[i];
         if (isPathSeparator(code)) {
             if (!matchedSlash) {
                 startPart = i + 1;
@@ -729,13 +849,13 @@ inline result_t _parse_win32(exlib::string path, obj_ptr<NObject>& retVal)
     if (end != -1) {
         if (startDot == -1 || preDotState == 0 || (preDotState == 1 && startDot == end - 1 && startDot == startPart + 1)) {
 
-            exlib::string tmp = path.substr(startPart, end);
+            exlib::string tmp = path.substr(startPart, end - startPart);
             ret->add("base", tmp);
             ret->add("name", tmp);
         } else {
-            ret->add("name", path.substr(startPart, startDot));
-            ret->add("base", path.substr(startPart, end));
-            ret->add("ext", path.substr(startDot, end));
+            ret->add("name", path.substr(startPart, startDot - startPart));
+            ret->add("base", path.substr(startPart, end - startPart));
+            ret->add("ext", path.substr(startDot, end - startDot));
         }
     }
 
@@ -817,10 +937,138 @@ inline result_t _join_win32(OptArgs ps, exlib::string& retVal)
     return _normalize_win32(p.str(), retVal);
 }
 
+// C++ interface overloads for _join functions
+inline result_t _join(exlib::string path1, exlib::string path2, exlib::string& retVal)
+{
+    Path p;
+    p.joinPosix(path1);
+    p.joinPosix(path2);
+
+    return _normalize(p.str(), retVal);
+}
+
+inline result_t _join(exlib::string path1, exlib::string path2, exlib::string path3, exlib::string& retVal)
+{
+    Path p;
+    p.joinPosix(path1);
+    p.joinPosix(path2);
+    p.joinPosix(path3);
+
+    return _normalize(p.str(), retVal);
+}
+
+inline result_t _join(exlib::string path1, exlib::string path2, exlib::string path3, exlib::string path4, exlib::string& retVal)
+{
+    Path p;
+    p.joinPosix(path1);
+    p.joinPosix(path2);
+    p.joinPosix(path3);
+    p.joinPosix(path4);
+
+    return _normalize(p.str(), retVal);
+}
+
+inline result_t _join_win32(exlib::string path1, exlib::string path2, exlib::string& retVal)
+{
+    Path p;
+    p.joinWin32(path1);
+    p.joinWin32(path2);
+
+    return _normalize_win32(p.str(), retVal);
+}
+
+inline result_t _join_win32(exlib::string path1, exlib::string path2, exlib::string path3, exlib::string& retVal)
+{
+    Path p;
+    p.joinWin32(path1);
+    p.joinWin32(path2);
+    p.joinWin32(path3);
+
+    return _normalize_win32(p.str(), retVal);
+}
+
+inline result_t _join_win32(exlib::string path1, exlib::string path2, exlib::string path3, exlib::string path4, exlib::string& retVal)
+{
+    Path p;
+    p.joinWin32(path1);
+    p.joinWin32(path2);
+    p.joinWin32(path3);
+    p.joinWin32(path4);
+
+    return _normalize_win32(p.str(), retVal);
+}
+
+// Vector-based overloads for joining multiple path components
+inline result_t _join(const std::vector<exlib::string>& paths, exlib::string& retVal)
+{
+    if (paths.empty()) {
+        retVal = "";
+        return 0;
+    }
+
+    Path p;
+    for (const auto& path : paths) {
+        p.joinPosix(path);
+    }
+
+    return _normalize(p.str(), retVal);
+}
+
+inline result_t _join_win32(const std::vector<exlib::string>& paths, exlib::string& retVal)
+{
+    if (paths.empty()) {
+        retVal = "";
+        return 0;
+    }
+
+    Path p;
+    for (const auto& path : paths) {
+        p.joinWin32(path);
+    }
+
+    return _normalize_win32(p.str(), retVal);
+}
+
+// Iterator-based overloads for even better performance without temporary vector creation
+template <typename Iterator>
+inline result_t _join(Iterator first, Iterator last, exlib::string& retVal)
+{
+    Path p;
+    for (auto it = first; it != last; ++it) {
+        p.joinPosix(*it);
+    }
+
+    return _normalize(p.str(), retVal);
+}
+
+template <typename Iterator>
+inline result_t _join_win32(Iterator first, Iterator last, exlib::string& retVal)
+{
+    Path p;
+    for (auto it = first; it != last; ++it) {
+        p.joinWin32(*it);
+    }
+
+    return _normalize_win32(p.str(), retVal);
+}
+
 inline result_t _resolve(OptArgs ps, exlib::string& retVal)
 {
     exlib::string str;
     process_base::cwd(str);
+
+#ifdef _WIN32
+    // Convert Windows path to Unix-style path for posix resolve
+    if (str.length() >= 2 && qisascii(str[0]) && str[1] == ':') {
+        str = str.substr(2); // Remove drive letter
+    }
+    // Convert backslashes to forward slashes
+    for (size_t i = 0; i < str.length(); i++) {
+        if (str[i] == '\\') {
+            str[i] = '/';
+        }
+    }
+#endif
 
     Path p;
     p.resolvePosix(str);
@@ -841,6 +1089,19 @@ inline result_t _resolve(exlib::string& path)
 {
     exlib::string str;
     process_base::cwd(str);
+
+#ifdef _WIN32
+    // Convert Windows path to Unix-style path for posix resolve
+    if (str.length() >= 2 && qisascii(str[0]) && str[1] == ':') {
+        str = str.substr(2); // Remove drive letter
+    }
+    // Convert backslashes to forward slashes
+    for (size_t i = 0; i < str.length(); i++) {
+        if (str[i] == '\\') {
+            str[i] = '/';
+        }
+    }
+#endif
 
     Path p;
     p.resolvePosix(str);
@@ -883,8 +1144,10 @@ inline result_t _resolve_win32(exlib::string& path)
 
 inline result_t _relative(exlib::string from, exlib::string to, exlib::string& retVal)
 {
-    if (from == to)
+    if (from == to) {
+        retVal.clear();
         return 0;
+    }
 
     result_t hr;
 
@@ -896,13 +1159,15 @@ inline result_t _relative(exlib::string from, exlib::string to, exlib::string& r
     if (hr < 0)
         return hr;
 
-    if (from == to)
+    if (from == to) {
+        retVal.clear();
         return 0;
+    }
 
     // Trim any leading backslashes
     int32_t fromStart = 1;
     for (; fromStart < (int32_t)from.length(); ++fromStart) {
-        if (!isPosixPathSlash(from.c_str()[fromStart]))
+        if (!isPosixPathSlash(from[fromStart]))
             break;
     }
     int32_t fromEnd = (int32_t)from.length();
@@ -911,7 +1176,7 @@ inline result_t _relative(exlib::string from, exlib::string to, exlib::string& r
     // Trim any leading backslashes
     int32_t toStart = 1;
     for (; toStart < (int32_t)to.length(); ++toStart) {
-        if (!isPosixPathSlash(to.c_str()[toStart]))
+        if (!isPosixPathSlash(to[toStart]))
             break;
     }
     int32_t toEnd = (int32_t)to.length();
@@ -924,7 +1189,7 @@ inline result_t _relative(exlib::string from, exlib::string to, exlib::string& r
     for (; i <= length; ++i) {
         if (i == length) {
             if (toLen > length) {
-                if (isPosixPathSlash(to.c_str()[toStart + i])) {
+                if (isPosixPathSlash(to[toStart + i])) {
                     // We get here if `from` is the exact base path for `to`.
                     // For example: from='/foo/bar'; to='/foo/bar/baz'
                     return _normalize(to.substr(toStart + i + 1), retVal, false);
@@ -935,7 +1200,7 @@ inline result_t _relative(exlib::string from, exlib::string to, exlib::string& r
                 }
 
             } else if (fromLen > length) {
-                if (isPosixPathSlash(from.c_str()[fromStart + i])) {
+                if (isPosixPathSlash(from[fromStart + i])) {
                     // We get here if `to` is the exact base path for `from`.
                     // For example: from='/foo/bar/baz'; to='/foo/bar'
                     lastCommonSep = i;
@@ -947,8 +1212,8 @@ inline result_t _relative(exlib::string from, exlib::string to, exlib::string& r
             }
             break;
         }
-        char fromChar = from.c_str()[fromStart + i];
-        char toChar = to.c_str()[toStart + i];
+        char fromChar = from[fromStart + i];
+        char toChar = to[toStart + i];
         if (fromChar != toChar)
             break;
         else if (isPosixPathSlash(fromChar))
@@ -959,7 +1224,7 @@ inline result_t _relative(exlib::string from, exlib::string to, exlib::string& r
     // Generate the relative path based on the path difference between `to`
     // and `from`
     for (i = fromStart + lastCommonSep + 1; i <= fromEnd; ++i) {
-        if (i == fromEnd || isPosixPathSlash(from.c_str()[i])) {
+        if (i == fromEnd || isPosixPathSlash(from[i])) {
             if (out.length() == 0)
                 out += "..";
             else
@@ -973,7 +1238,7 @@ inline result_t _relative(exlib::string from, exlib::string to, exlib::string& r
         return _normalize(out + to.substr(toStart + lastCommonSep), retVal, false);
     } else {
         toStart += lastCommonSep;
-        if (isPosixPathSlash(to.c_str()[toStart]))
+        if (isPosixPathSlash(to[toStart]))
             ++toStart;
 
         return _normalize(to.substr(toStart), retVal, false);
@@ -984,8 +1249,10 @@ inline result_t _relative(exlib::string from, exlib::string to, exlib::string& r
 
 inline result_t _relative_win32(exlib::string from, exlib::string to, exlib::string& retVal)
 {
-    if (from == to)
+    if (from == to) {
+        retVal.clear();
         return 0;
+    }
 
     exlib::string fromOrig = "" + from;
     exlib::string toOrig = "" + to;
@@ -1000,27 +1267,31 @@ inline result_t _relative_win32(exlib::string from, exlib::string to, exlib::str
     if (hr < 0)
         return hr;
 
-    if (fromOrig == toOrig)
+    if (from == to) {
+        retVal.clear();
         return 0;
+    }
 
-    from = "" + fromOrig;
+    from = "" + from;
     exlib::qstrlwr(from);
-    to = "" + toOrig;
+    to = "" + to;
     exlib::qstrlwr(to);
 
-    if (from == to)
+    if (from == to) {
+        retVal.clear();
         return 0;
+    }
 
     // Trim any leading backslashes
     int32_t fromStart = 0;
     for (; fromStart < (int32_t)from.length(); ++fromStart) {
-        if (!isWin32PathSlash(from.c_str()[fromStart]))
+        if (!isWin32PathSlash(from[fromStart]))
             break;
     }
     // Trim trailing backslashes (applicable to UNC paths only)
     int32_t fromEnd = (int32_t)from.length();
     for (; fromEnd - 1 > fromStart; --fromEnd) {
-        if (!isWin32PathSlash(from.c_str()[fromEnd - 1]))
+        if (!isWin32PathSlash(from[fromEnd - 1]))
             break;
     }
     int32_t fromLen = (fromEnd - fromStart);
@@ -1028,13 +1299,13 @@ inline result_t _relative_win32(exlib::string from, exlib::string to, exlib::str
     // Trim any leading backslashes
     int32_t toStart = 0;
     for (; toStart < (int32_t)to.length(); ++toStart) {
-        if (!isWin32PathSlash(to.c_str()[toStart]))
+        if (!isWin32PathSlash(to[toStart]))
             break;
     }
     // Trim trailing backslashes (applicable to UNC paths only)
     int32_t toEnd = (int32_t)to.length();
     for (; toEnd - 1 > toStart; --toEnd) {
-        if (!isWin32PathSlash(to.c_str()[toEnd - 1]))
+        if (!isWin32PathSlash(to[toEnd - 1]))
             break;
     }
     int32_t toLen = (toEnd - toStart);
@@ -1046,7 +1317,7 @@ inline result_t _relative_win32(exlib::string from, exlib::string to, exlib::str
     for (; i <= length; ++i) {
         if (i == length) {
             if (toLen > length) {
-                if (isWin32PathSlash(to.c_str()[toStart + i])) {
+                if (isWin32PathSlash(to[toStart + i])) {
                     // We get here if `from` is the exact base path for `to`.
                     // For example: from='C:\\foo\\bar'; to='C:\\foo\\bar\\baz'
                     return _normalize_win32(toOrig.substr(toStart + i + 1), retVal, true);
@@ -1057,7 +1328,7 @@ inline result_t _relative_win32(exlib::string from, exlib::string to, exlib::str
                 }
             }
             if (fromLen > length) {
-                if (isWin32PathSlash(from.c_str()[fromStart + i])) {
+                if (isWin32PathSlash(from[fromStart + i])) {
                     // We get here if `to` is the exact base path for `from`.
                     // For example: from='C:\\foo\\bar'; to='C:\\foo'
                     lastCommonSep = i;
@@ -1069,8 +1340,8 @@ inline result_t _relative_win32(exlib::string from, exlib::string to, exlib::str
             }
             break;
         }
-        char fromChar = from.c_str()[fromStart + i];
-        char toChar = to.c_str()[toStart + i];
+        char fromChar = from[fromStart + i];
+        char toChar = to[toStart + i];
         if (fromChar != toChar)
             break;
         else if (isWin32PathSlash(fromChar))
@@ -1089,7 +1360,7 @@ inline result_t _relative_win32(exlib::string from, exlib::string to, exlib::str
     // Generate the relative path based on the path difference between `to` and
     // `from`
     for (i = fromStart + lastCommonSep + 1; i <= fromEnd; ++i) {
-        if (i == fromEnd || isWin32PathSlash(from.c_str()[i])) {
+        if (i == fromEnd || isWin32PathSlash(from[i])) {
             if (out.length() == 0)
                 out += "..";
             else
@@ -1103,7 +1374,7 @@ inline result_t _relative_win32(exlib::string from, exlib::string to, exlib::str
         return _normalize_win32(out + toOrig.substr(toStart + lastCommonSep), retVal, true);
     } else {
         toStart += lastCommonSep;
-        if (isWin32PathSlash(toOrig.c_str()[toStart]))
+        if (isWin32PathSlash(toOrig[toStart]))
             ++toStart;
         return _normalize_win32(toOrig.substr(toStart), retVal, true);
     }
@@ -1123,7 +1394,7 @@ inline result_t _delimiter(exlib::string& retVal)
 
 inline result_t _fullpath(exlib::string path, exlib::string& retVal)
 {
-    if (isPathSlash(path.c_str()[0]))
+    if (isPathSlash(path[0]))
         return _normalize(path, retVal);
 
     exlib::string str;

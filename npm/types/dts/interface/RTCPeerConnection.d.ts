@@ -65,9 +65,7 @@ declare class Class_RTCPeerConnection extends Class_EventEmitter {
      *      此方法指定连接本地端的属性，包括媒体格式。该方法采用单个参数（会话描述），并返回一个 Promise ，一旦描述发生异步更改，该值就会得到满足。
      *     
      */
-    setLocalDescription(): void;
-
-    setLocalDescription(callback: (err: Error | undefined | null)=>any): void;
+    setLocalDescription(): Promise<void>;
 
     /**
      * @description 更改与连接关联的本地描述
@@ -77,9 +75,7 @@ declare class Class_RTCPeerConnection extends Class_EventEmitter {
      *      @param description 会话描述
      *     
      */
-    setLocalDescription(description: Class_RTCSessionDescription): void;
-
-    setLocalDescription(description: Class_RTCSessionDescription, callback: (err: Error | undefined | null)=>any): void;
+    setLocalDescription(description: Class_RTCSessionDescription): Promise<void>;
 
     /**
      * @description 更改与连接关联的远程描述
@@ -89,9 +85,7 @@ declare class Class_RTCPeerConnection extends Class_EventEmitter {
      *      @param description 会话描述
      *     
      */
-    setRemoteDescription(description: Class_RTCSessionDescription): void;
-
-    setRemoteDescription(description: Class_RTCSessionDescription, callback: (err: Error | undefined | null)=>any): void;
+    setRemoteDescription(description: Class_RTCSessionDescription): Promise<void>;
 
     /**
      * @description 添加 ICE 候选项
@@ -101,9 +95,7 @@ declare class Class_RTCPeerConnection extends Class_EventEmitter {
      *      @param candidate ICE 候选项
      *     
      */
-    addIceCandidate(candidate: Class_RTCIceCandidate): void;
-
-    addIceCandidate(candidate: Class_RTCIceCandidate, callback: (err: Error | undefined | null)=>any): void;
+    addIceCandidate(candidate: Class_RTCIceCandidate): Promise<void>;
 
     /**
      * @description 创建一个 Offer 描述
@@ -114,9 +106,7 @@ declare class Class_RTCPeerConnection extends Class_EventEmitter {
      *      @return 返回描述对象
      *     
      */
-    createOffer(options?: FIBJS.GeneralObject): any;
-
-    createOffer(options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: any)=>any): void;
+    createOffer(options?: FIBJS.GeneralObject): Promise<any>;
 
     /**
      * @description 创建一个 Answer 描述
@@ -127,9 +117,7 @@ declare class Class_RTCPeerConnection extends Class_EventEmitter {
      *      @return 返回描述对象
      *     
      */
-    createAnswer(options?: FIBJS.GeneralObject): any;
-
-    createAnswer(options?: FIBJS.GeneralObject, callback?: (err: Error | undefined | null, retVal: any)=>any): void;
+    createAnswer(options?: FIBJS.GeneralObject): Promise<any>;
 
     /**
      * @description 获取连接的统计信息
@@ -139,9 +127,7 @@ declare class Class_RTCPeerConnection extends Class_EventEmitter {
      *      @return 返回统计信息
      *     
      */
-    getStats(): FIBJS.GeneralObject;
-
-    getStats(callback: (err: Error | undefined | null, retVal: FIBJS.GeneralObject)=>any): void;
+    getStats(): Promise<FIBJS.GeneralObject>;
 
     /**
      * @description 关闭连接，此方法关闭连接，释放所有资源 
@@ -186,42 +172,42 @@ declare class Class_RTCPeerConnection extends Class_EventEmitter {
     /**
      * @description 连接状态变更事件 
      */
-    onconnectionstatechange: (...args: any[])=>any;
+    on(event: "connectionstatechange", listener: ()=>void): this;
 
     /**
      * @description 数据通道事件 
      */
-    ondatachannel: (...args: any[])=>any;
+    on(event: "datachannel", listener: ()=>void): this;
 
     /**
      * @description ICE 候选项事件 
      */
-    onicecandidate: (...args: any[])=>any;
+    on(event: "icecandidate", listener: ()=>void): this;
 
     /**
      * @description ICE 连接状态变更事件 
      */
-    oniceconnectionstatechange: (...args: any[])=>any;
+    on(event: "iceconnectionstatechange", listener: ()=>void): this;
 
     /**
      * @description ICE 收集状态变更事件 
      */
-    onicegatheringstatechange: (...args: any[])=>any;
+    on(event: "icegatheringstatechange", listener: ()=>void): this;
 
     /**
      * @description 本地描述变更事件 
      */
-    onlocaldescription: (...args: any[])=>any;
+    on(event: "localdescription", listener: ()=>void): this;
 
     /**
      * @description 信令状态变更事件 
      */
-    onsignalingstatechange: (...args: any[])=>any;
+    on(event: "signalingstatechange", listener: ()=>void): this;
 
     /**
      * @description 媒体轨道事件 
      */
-    ontrack: (...args: any[])=>any;
+    on(event: "track", listener: ()=>void): this;
 
 }
 

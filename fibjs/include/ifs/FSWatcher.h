@@ -20,15 +20,10 @@ class EventEmitter_base;
 
 class FSWatcher_base : public EventEmitter_base {
     DECLARE_CLASS(FSWatcher_base);
+    EVENT_SUPPORT();
 
 public:
     // FSWatcher_base
-    virtual result_t get_onchange(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onchange(v8::Local<v8::Function> newVal) = 0;
-    virtual result_t get_onclose(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onclose(v8::Local<v8::Function> newVal) = 0;
-    virtual result_t get_onerror(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onerror(v8::Local<v8::Function> newVal) = 0;
     virtual result_t close() = 0;
 
 public:
@@ -36,8 +31,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<FSWatcher_base>& retVal)
@@ -87,7 +81,7 @@ inline void FSWatcher_base::s_get_onchange(const v8::FunctionCallbackInfo<v8::Va
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onchange(vr);
+    hr = pInst->getListener("change", vr);
 
     METHOD_RETURN();
 }
@@ -101,7 +95,7 @@ inline void FSWatcher_base::s_set_onchange(const v8::FunctionCallbackInfo<v8::Va
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onchange(v0);
+    hr = pInst->setListener("change", v0);
 
     METHOD_VOID();
 }
@@ -115,7 +109,7 @@ inline void FSWatcher_base::s_get_onclose(const v8::FunctionCallbackInfo<v8::Val
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onclose(vr);
+    hr = pInst->getListener("close", vr);
 
     METHOD_RETURN();
 }
@@ -129,7 +123,7 @@ inline void FSWatcher_base::s_set_onclose(const v8::FunctionCallbackInfo<v8::Val
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onclose(v0);
+    hr = pInst->setListener("close", v0);
 
     METHOD_VOID();
 }
@@ -143,7 +137,7 @@ inline void FSWatcher_base::s_get_onerror(const v8::FunctionCallbackInfo<v8::Val
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onerror(vr);
+    hr = pInst->getListener("error", vr);
 
     METHOD_RETURN();
 }
@@ -157,7 +151,7 @@ inline void FSWatcher_base::s_set_onerror(const v8::FunctionCallbackInfo<v8::Val
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onerror(v0);
+    hr = pInst->setListener("error", v0);
 
     METHOD_VOID();
 }

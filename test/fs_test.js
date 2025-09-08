@@ -364,13 +364,46 @@ describe('fs', () => {
         f1.write(f.read(f.size()));
 
         f1.rewind();
-        var b = f1.read(f1.size() + 100n);
+        var b = f1.read(f1.size() + 100);
         assert.equal(true, f1.eof());
         assert.equal(f1.size(), b.length);
 
         f.close();
         f1.close();
         fs.unlink(path.join(__dirname, 'fs_test.js.bak' + vmid));
+    });
+
+    it("file data event", () => {
+        var testFile = fs.openFile(path.join(__dirname, 'fs_test.js.data_event' + vmid), 'w+');
+        var receivedData = [];
+        var dataEventCount = 0;
+        
+        // Write data to trigger data events
+        testFile.write('Hello, ');
+        testFile.write('World!');
+        testFile.write(' Test file data event.');
+        testFile.rewind();
+
+        // Register data event handler
+        testFile.on('data', (data) => {
+            receivedData.push(data.toString());
+            dataEventCount++;
+        });
+        
+        // Let the fiber yield to process data events
+        coroutine.sleep(10);
+        
+        // Verify that data events were triggered
+        assert.equal(dataEventCount, 1);
+        assert.deepEqual(receivedData, ['Hello, World! Test file data event.']);
+
+        // Verify the complete content
+        testFile.rewind();
+        var fullContent = testFile.read().toString();
+        assert.equal(fullContent, 'Hello, World! Test file data event.');
+        
+        testFile.close();
+        fs.unlink(path.join(__dirname, 'fs_test.js.data_event' + vmid));
     });
 
     it("readFile", () => {
@@ -426,18 +459,18 @@ describe('fs', () => {
 
     it("seek", () => {
         var f = fs.openFile(path.join(__dirname, 'fs_test.js'));
-        f.seek(f.size() + 10n, fs.SEEK_SET);
-        assert.equal(f.tell(), f.size() + 10n);
+        f.seek(f.size() + 10, fs.SEEK_SET);
+        assert.equal(f.tell(), f.size() + 10);
         f.seek(10, fs.SEEK_SET);
         var b = f.read(f.size());
-        assert.equal(f.size() - 10n, b.length);
+        assert.equal(f.size() - 10, b.length);
         f.close();
     });
 
     it("seek 64 bits", () => {
         var f = fs.openFile(path.join(__dirname, 'fs_test.js'));
-        f.seek(f.size() + 8589934592n, fs.SEEK_SET);
-        assert.equal(f.tell(), f.size() + 8589934592n);
+        f.seek(f.size() + 8589934592, fs.SEEK_SET);
+        assert.equal(f.tell(), f.size() + 8589934592);
         f.close();
     });
 
@@ -992,6 +1025,52 @@ describe('fs', () => {
         assert.isTrue(f.stat() instanceof Promise);
         assert.property(await f.stat(), 'size');
         await f.close();
+    });
+
+    it("write methods return value validation", () => {
+        var fn = path.join(__dirname, 'fs_write_test' + vmid);
+        
+        try {
+            // Test fs.writeFile return value
+            var testContent = 'File write test content';
+            var result = fs.writeFile(fn, testContent);
+            // writeFile should return undefined (void function)
+            assert.equal(result, 23);
+            
+            // Verify file was written
+            var readContent = fs.readFile(fn).toString();
+            assert.equal(readContent, testContent);
+            
+            // Test fs.appendFile return value
+            result = fs.appendFile(fn, ' appended');
+            // appendFile should return undefined (void function)
+            assert.equal(result, 9);
+
+            // Test file handle write return value
+            var f = fs.openFile(fn, 'w+');
+            var writeData = 'Handle write test';
+            var bytesWritten = f.write(writeData);
+            assert.equal(bytesWritten, writeData.length);
+            
+            // Test write with Buffer
+            f.rewind();
+            f.truncate(0);
+            var bufferData = new Buffer('Buffer write test');
+            bytesWritten = f.write(bufferData);
+            assert.equal(bytesWritten, bufferData.length);
+            
+            // Test write with empty string
+            f.rewind();
+            f.truncate(0);
+            bytesWritten = f.write('');
+            assert.equal(bytesWritten, 0);
+            
+            f.close();
+        } finally {
+            try {
+                fs.unlink(fn);
+            } catch (e) { }
+        }
     });
 
 });

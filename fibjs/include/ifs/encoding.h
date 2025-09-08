@@ -35,7 +35,7 @@ public:
     static result_t decode(exlib::string str, exlib::string codec, obj_ptr<Buffer_base>& retVal);
     static result_t jsstr(exlib::string str, bool json, exlib::string& retVal);
     static result_t encodeURI(exlib::string url, exlib::string& retVal);
-    static result_t encodeURIComponent(exlib::string url, exlib::string& retVal);
+    static result_t encodeURIComponent(exlib::string url, bool formEncoded, exlib::string& retVal);
     static result_t decodeURI(exlib::string url, exlib::string& retVal);
 
 public:
@@ -43,8 +43,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<encoding_base>& retVal)
@@ -132,7 +131,7 @@ inline void encoding_base::s_static_encode(const v8::FunctionCallbackInfo<v8::Va
     ARG(obj_ptr<Buffer_base>, 0);
     OPT_ARG(exlib::string, 1, "utf8");
 
-    hr = encode(v0, v1, vr);
+    hr = encode(v0.get(), v1, vr);
 
     METHOD_RETURN();
 }
@@ -190,11 +189,12 @@ inline void encoding_base::s_static_encodeURIComponent(const v8::FunctionCallbac
 
     METHOD_ENTER();
 
-    METHOD_OVER(1, 1);
+    METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
+    OPT_ARG(bool, 1, false);
 
-    hr = encodeURIComponent(v0, vr);
+    hr = encodeURIComponent(v0, v1, vr);
 
     METHOD_RETURN();
 }

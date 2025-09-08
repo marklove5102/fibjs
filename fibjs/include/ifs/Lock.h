@@ -85,10 +85,6 @@ inline result_t Lock_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj_pt
 
     LOAD_ENTER();
 
-    METHOD_OVER(0, 0);
-
-    hr = _new(vr, args.This());
-
     LOAD_RETURN();
 }
 
@@ -97,7 +93,7 @@ inline void Lock_base::s_acquire(const v8::FunctionCallbackInfo<v8::Value>& args
     bool vr;
 
     ASYNC_METHOD_INSTANCE(Lock_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("Lock.acquire");
 
     METHOD_OVER(1, 0);
 

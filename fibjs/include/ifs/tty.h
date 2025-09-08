@@ -15,20 +15,24 @@
 
 namespace fibjs {
 
+class TTYInputStream_base;
+class TTYOutputStream_base;
+class FileHandle_base;
+
 class tty_base : public object_base {
     DECLARE_CLASS(tty_base);
 
 public:
     // tty_base
     static result_t isatty(int32_t fd, bool& retVal);
+    static result_t isatty(FileHandle_base* fd, bool& retVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<tty_base>& retVal)
@@ -39,6 +43,10 @@ public:
 };
 }
 
+#include "ifs/TTYInputStream.h"
+#include "ifs/TTYOutputStream.h"
+#include "ifs/FileHandle.h"
+
 namespace fibjs {
 inline ClassInfo& tty_base::class_info()
 {
@@ -46,9 +54,14 @@ inline ClassInfo& tty_base::class_info()
         { "isatty", s_static_isatty, true, ClassData::ASYNC_SYNC }
     };
 
+    static ClassData::ClassObject s_object[] = {
+        { "ReadStream", TTYInputStream_base::class_info },
+        { "WriteStream", TTYOutputStream_base::class_info }
+    };
+
     static ClassData s_cd = {
         "tty", true, s__new, NULL,
-        ARRAYSIZE(s_method), s_method, 0, NULL, 0, NULL, 0, NULL, NULL, NULL,
+        ARRAYSIZE(s_method), s_method, ARRAYSIZE(s_object), s_object, 0, NULL, 0, NULL, NULL, NULL,
         &object_base::class_info(),
         false
     };
@@ -68,6 +81,12 @@ inline void tty_base::s_static_isatty(const v8::FunctionCallbackInfo<v8::Value>&
     ARG(int32_t, 0);
 
     hr = isatty(v0, vr);
+
+    METHOD_OVER(1, 1);
+
+    ARG(obj_ptr<FileHandle_base>, 0);
+
+    hr = isatty(v0.get(), vr);
 
     METHOD_RETURN();
 }

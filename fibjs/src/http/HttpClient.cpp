@@ -7,6 +7,7 @@
 #include "object.h"
 #include "HttpClient.h"
 #include "Buffer.h"
+#include "Blob.h"
 #include "MemoryStream.h"
 #include "HttpRequest.h"
 #include "TLSSocket.h"
@@ -17,6 +18,8 @@
 #include "ifs/zlib.h"
 #include "ifs/json.h"
 #include "ifs/msgpack.h"
+#include "ifs/URLSearchParams.h"
+#include "ifs/FormData.h"
 #include "ifs/querystring.h"
 #include <string.h>
 
@@ -640,21 +643,21 @@ result_t HttpClient::request(Stream_base* conn, HttpRequest_base* req,
 }
 
 result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStream_base* body,
-    SeekableStream_base* response_body, bool keepAlive, NObject* opts, obj_ptr<HttpResponse_base>& retVal,
+    SeekableStream_base* response_body, bool keepAlive, Headers_base* headers, obj_ptr<HttpResponse_base>& retVal,
     AsyncEvent* ac, bool headerOnly)
 {
     class asyncRequest : public AsyncState {
     public:
         asyncRequest(HttpClient* hc, exlib::string method, obj_ptr<Url>& u,
             SeekableStream_base* body, SeekableStream_base* response_body, bool keepAlive,
-            NObject* opts, obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac, bool headerOnly)
+            Headers_base* headers, obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac, bool headerOnly)
             : AsyncState(ac)
             , m_method(method)
             , m_u(u)
             , m_body(body)
             , m_response_body(response_body)
             , m_keepAlive(keepAlive)
-            , m_opts(opts)
+            , m_headers(headers)
             , m_retVal(retVal)
             , m_hc(hc)
             , m_headerOnly(headerOnly)
@@ -681,7 +684,7 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
                 m_ssl = true;
                 m_connUrl = "ssl://";
             } else if (protocol == "http:") {
-                if (host.c_str()[0] == '/') {
+                if (host[0] == '/') {
                     _domain = true;
                     m_connUrl = "unix:";
                 } else
@@ -701,9 +704,12 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
 
             m_req->set_method(m_method);
 
-            m_http_proxy = m_hc->m_http_proxy;
-            if (m_ssl && !m_hc->m_https_proxy.empty())
-                m_http_proxy = m_hc->m_https_proxy;
+            exlib::string hostname = m_u->hostname();
+            if (hostname != "localhost" && hostname != "127.0.0.1" && hostname != "::1") {
+                m_http_proxy = m_hc->m_http_proxy;
+                if (m_ssl && !m_hc->m_https_proxy.empty())
+                    m_http_proxy = m_hc->m_https_proxy;
+            }
 
             if (m_http_proxy.empty() || m_ssl) {
                 m_u->get_path(path);
@@ -714,33 +720,33 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
             bool enableEncoding = false;
             m_hc->get_enableEncoding(enableEncoding);
             if (enableEncoding)
-                m_req->addHeader("Accept-Encoding", "gzip,deflate");
+                m_req->appendHeader("Accept-Encoding", "gzip,deflate");
 
             bool enableCookie = false;
             m_hc->get_enableCookie(enableCookie);
             if (enableCookie) {
                 m_hc->get_cookie(m_url, cookie);
                 if (cookie.length() > 0)
-                    m_req->addHeader("Cookie", cookie);
+                    m_req->appendHeader("Cookie", cookie);
             }
 
             m_req->set_keepAlive(m_keepAlive);
 
-            if (m_opts)
-                m_req->addHeader(m_opts);
+            if (m_headers)
+                m_req->appendHeader(m_headers);
 
             exlib::string a = m_hc->agent();
             if (!a.empty()) {
                 bool bCheck = false;
                 m_req->hasHeader("User-Agent", bCheck);
                 if (!bCheck)
-                    m_req->addHeader("User-Agent", a);
+                    m_req->appendHeader("User-Agent", a);
             }
 
             bool bHost = false;
             m_req->hasHeader("Host", bHost);
             if (!bHost)
-                m_req->addHeader("Host", host);
+                m_req->appendHeader("Host", host);
 
             if (m_body)
                 m_req->set_body(m_body);
@@ -762,7 +768,7 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
                 else
                     return net_base::connect(m_connUrl, m_hc->m_timeout, m_conn, next(connected));
             } else {
-                bool socks = m_http_proxy.c_str()[0] == 's';
+                bool socks = m_http_proxy[0] == 's';
 
                 if (m_ssl && !socks) {
                     exlib::string host = m_connUrl.substr(6);
@@ -770,11 +776,11 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
 
                     m_reqConn->set_method("CONNECT");
                     m_reqConn->set_address(host);
-                    m_reqConn->addHeader("Host", host);
+                    m_reqConn->appendHeader("Host", host);
 
                     exlib::string a = m_hc->agent();
                     if (!a.empty())
-                        m_reqConn->addHeader("User-Agent", a);
+                        m_reqConn->appendHeader("User-Agent", a);
                 }
 
                 if (m_hc->get_conn(m_http_proxy, m_conn)) {
@@ -819,7 +825,7 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
             obj_ptr<Buffer_base> buf = new Buffer("\5\1\0", 3);
 
             m_conn.As<Socket_base>()->set_timeout(m_hc->m_timeout);
-            return m_conn->write(buf, next(socks_hello_response));
+            return m_conn->write(buf, m_len, next(socks_hello_response));
         }
 
         ON_STATE(asyncRequest, socks_hello_response)
@@ -835,7 +841,7 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
             exlib::string strBuffer;
 
             m_buffer->toString(strBuffer);
-            if (strBuffer.length() != 2 || strBuffer.c_str()[0] != 5 || strBuffer.c_str()[1] != 0)
+            if (strBuffer.length() != 2 || strBuffer[0] != 5 || strBuffer[1] != 0)
                 return CHECK_ERROR(Runtime::setError("HttpClient: socks 5 handshake failed."));
 
             obj_ptr<Url> u = new Url();
@@ -861,7 +867,7 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
             strBuffer.append((char*)&port, 2);
 
             obj_ptr<Buffer_base> buf = new Buffer(strBuffer.c_str(), strBuffer.length());
-            return m_conn->write(buf, next(socks_connect_req_5_bytes));
+            return m_conn->write(buf, m_len, next(socks_connect_req_5_bytes));
         }
 
         ON_STATE(asyncRequest, socks_connect_req_5_bytes)
@@ -964,10 +970,13 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
             if (upgrade)
                 return next(end);
 
+            if (m_headerOnly)
+                return next(end);
+
             bool keepAlive;
             m_retVal->get_keepAlive(keepAlive);
             if (keepAlive) {
-                if (m_http_proxy.empty() || m_http_proxy.c_str()[0] == 's' || !m_sslhost.empty())
+                if (m_http_proxy.empty() || m_http_proxy[0] == 's' || !m_sslhost.empty())
                     m_hc->save_conn(m_connUrl, m_conn);
                 else
                     m_hc->save_conn(m_http_proxy, m_conn);
@@ -1031,8 +1040,9 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
         obj_ptr<SeekableStream_base> m_body;
         obj_ptr<SeekableStream_base> m_response_body;
         int64_t m_response_pos;
+        int32_t m_len;
         bool m_keepAlive;
-        obj_ptr<NObject> m_opts;
+        obj_ptr<Headers_base> m_headers;
         obj_ptr<HttpResponse_base>& m_retVal;
         std::unordered_map<exlib::string, bool> m_urls;
         obj_ptr<Stream_base> m_conn;
@@ -1048,11 +1058,11 @@ result_t HttpClient::request(exlib::string method, obj_ptr<Url>& u, SeekableStre
     if (ac->isSync())
         return CHECK_ERROR(CALL_E_NOSYNC);
 
-    return (new asyncRequest(this, method, u, body, response_body, keepAlive, opts, retVal, ac, headerOnly))->post(0);
+    return (new asyncRequest(this, method, u, body, response_body, keepAlive, headers, retVal, ac, headerOnly))->post(0);
 }
 
 result_t HttpClient::request(exlib::string method, exlib::string url, SeekableStream_base* body,
-    SeekableStream_base* response_body, bool keepAlive, NObject* opts, obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac)
+    SeekableStream_base* response_body, bool keepAlive, Headers_base* headers, obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac)
 {
     if (ac->isSync())
         return CHECK_ERROR(CALL_E_NOSYNC);
@@ -1062,19 +1072,20 @@ result_t HttpClient::request(exlib::string method, exlib::string url, SeekableSt
     if (hr < 0)
         return hr;
 
-    return request(method, u, body, response_body, keepAlive, opts, retVal, ac, false);
+    return request(method, u, body, response_body, keepAlive, headers, retVal, ac, false);
 }
 
 result_t HttpClient::get_request_opts(exlib::string method, exlib::string url, v8::Local<v8::Object> opts, AsyncEvent* ac)
 {
     Isolate* isolate = holder();
     v8::Local<v8::Context> context = isolate->context();
-    obj_ptr<NObject> map = new NObject();
+    obj_ptr<Headers_base> headers;
     obj_ptr<SeekableStream_base> stm;
     v8::Local<v8::Object> o;
     JSValue v;
     Variant ct;
     result_t hr;
+    int32_t len;
 
     ac->m_ctx.resize(6);
 
@@ -1098,34 +1109,14 @@ result_t HttpClient::get_request_opts(exlib::string method, exlib::string url, v
     u = uo.As<Url>();
     ac->m_ctx[1] = u;
 
-    ac->m_ctx[2] = map;
-
-    hr = GetConfigValue(isolate, opts, "headers", o);
+    hr = GetConfigValue(isolate, opts, "headers", headers);
     if (hr >= 0) {
-        JSArray ks = o->GetPropertyNames(context);
-        int32_t len = ks->Length();
-        int32_t i;
-
-        for (i = 0; i < len; i++) {
-            JSValue k = ks->Get(context, i);
-            JSValue v = o->Get(context, k);
-
-            if (v.IsEmpty())
-                return CALL_E_JAVASCRIPT;
-
-            if (v->IsArray()) {
-                obj_ptr<NArray> arr = new NArray();
-                v8::Local<v8::Array> a = v.As<v8::Array>();
-                int32_t len1 = a->Length();
-                int32_t i1;
-
-                for (i1 = 0; i1 < len1; i1++)
-                    arr->append(isolate->toString(JSValue(a->Get(context, i1))));
-
-                map->add(isolate->toString(k), arr);
-            } else
-                map->add(isolate->toString(k), isolate->toString(v));
-        }
+        ac->m_ctx[2] = headers;
+    } else if (hr == CALL_E_PARAMNOTOPTIONAL) {
+        headers = new Headers();
+        ac->m_ctx[2] = headers;
+    } else {
+        return hr;
     }
 
     v = opts->Get(context, isolate->NewString("body", 4));
@@ -1133,68 +1124,100 @@ result_t HttpClient::get_request_opts(exlib::string method, exlib::string url, v
         return CALL_E_JAVASCRIPT;
 
     if (!v->IsUndefined()) {
-        stm = SeekableStream_base::getInstance(v);
-        if (!stm) {
-            obj_ptr<Buffer_base> buf;
-
+        if ((stm = SeekableStream_base::getInstance(v)) == NULL) {
             stm = new MemoryStream();
+            obj_ptr<Buffer_base> buf;
+            obj_ptr<Blob_base> blob;
+            obj_ptr<FormData_base> formData;
+            obj_ptr<URLSearchParams_base> params;
 
-            o.Clear();
-            hr = GetArgumentValue(isolate, v, o);
-            if (hr >= 0) {
+            if (v->IsString()) {
+                hr = GetArgumentValue(isolate, v, buf);
+                if (hr < 0)
+                    return hr;
+
+                if (headers->first("Content-Type", ct) == CALL_RETURN_NULL)
+                    headers->set("Content-Type", "application/x-www-form-urlencoded");
+            } else if ((params = URLSearchParams_base::getInstance(v)) != NULL) {
                 exlib::string s;
-                hr = querystring_base::stringify(o, "&", "=", v8::Local<v8::Object>(), s);
+                hr = params->toString(s);
                 if (hr < 0)
                     return hr;
 
                 buf = new Buffer(s.c_str(), s.length());
-                if (map->get("Content-Type", ct) == CALL_RETURN_NULL)
-                    map->add("Content-Type", "application/x-www-form-urlencoded");
+                if (headers->first("Content-Type", ct) == CALL_RETURN_NULL)
+                    headers->set("Content-Type", "application/x-www-form-urlencoded");
+            } else if (IsJSBuffer(v, false) && GetArgumentValue(isolate, v, buf) == 0) {
+                // Handle Buffer type directly - don't try to encode as FormData
+                if (headers->first("Content-Type", ct) == CALL_RETURN_NULL)
+                    headers->set("Content-Type", "application/octet-stream");
             } else {
-                hr = GetArgumentValue(isolate, v, buf);
-                if (hr < 0)
-                    return hr;
+                bool has_ContentType = false;
+
+                if ((blob = Blob_base::getInstance(v)) == NULL && GetArgumentValue(isolate, v, formData) == 0) {
+                    exlib::string mimeType;
+                    if (headers->first("Content-Type", ct) != CALL_RETURN_NULL) {
+                        has_ContentType = true;
+                        mimeType = ct.string();
+                    } else {
+                        mimeType = "application/x-www-form-urlencoded";
+                    }
+
+                    hr = formData->encode(mimeType, blob);
+                    if (hr < 0)
+                        return hr;
+                }
+
+                if (blob || (blob = Blob_base::getInstance(v)) != NULL) {
+                    buf = blob.As<Blob>()->m_impl.getBuffer();
+                    if (!has_ContentType || headers->first("Content-Type", ct) == CALL_RETURN_NULL) {
+                        exlib::string mimeType;
+                        blob->get_type(mimeType);
+                        if (!mimeType.empty())
+                            headers->set("Content-Type", mimeType);
+                        else
+                            headers->set("Content-Type", "application/x-www-form-urlencoded");
+                    }
+                }
+
+                if (!buf) {
+                    hr = GetArgumentValue(isolate, v, buf);
+                    if (hr < 0)
+                        return hr;
+
+                    if (headers->first("Content-Type", ct) == CALL_RETURN_NULL)
+                        headers->set("Content-Type", "application/x-www-form-urlencoded");
+                }
             }
 
-            stm->cc_write(buf);
+            stm->cc_write(buf, len);
         }
-    } else {
-        v = opts->Get(context, isolate->NewString("json", 4));
-        if (v.IsEmpty())
-            return CALL_E_JAVASCRIPT;
+    } else if (!(v = opts->Get(context, isolate->NewString("json", 4)))->IsUndefined()) {
+        obj_ptr<Buffer_base> buf;
+        stm = new MemoryStream();
 
-        if (v->IsUndefined()) {
-            v = opts->Get(context, isolate->NewString("pack", 4));
-            if (v.IsEmpty())
-                return CALL_E_JAVASCRIPT;
+        exlib::string s;
+        hr = json_base::encode(v, s);
+        if (hr < 0)
+            return hr;
 
-            if (!v->IsUndefined()) {
-                obj_ptr<Buffer_base> buf;
-                stm = new MemoryStream();
+        buf = new Buffer(s.c_str(), s.length());
+        stm->cc_write(buf, len);
+        if (headers->first("Content-Type", ct) == CALL_RETURN_NULL)
+            headers->set("Content-Type", "application/json");
+    } else if (!(v = opts->Get(context, isolate->NewString("pack", 4)))->IsUndefined()) {
+        obj_ptr<Buffer_base> buf;
+        stm = new MemoryStream();
 
-                hr = msgpack_base::encode(v, buf);
-                if (hr < 0)
-                    return hr;
+        hr = msgpack_base::encode(v, buf);
+        if (hr < 0)
+            return hr;
 
-                stm->cc_write(buf);
-                if (map->get("Content-Type", ct) == CALL_RETURN_NULL)
-                    map->add("Content-Type", "application/msgpack");
-            }
-        } else {
-            obj_ptr<Buffer_base> buf;
-            stm = new MemoryStream();
-
-            exlib::string s;
-            hr = json_base::encode(v, s);
-            if (hr < 0)
-                return hr;
-
-            buf = new Buffer(s.c_str(), s.length());
-            stm->cc_write(buf);
-            if (map->get("Content-Type", ct) == CALL_RETURN_NULL)
-                map->add("Content-Type", "application/json");
-        }
+        stm->cc_write(buf, len);
+        if (headers->first("Content-Type", ct) == CALL_RETURN_NULL)
+            headers->set("Content-Type", "application/msgpack");
     }
+
     ac->m_ctx[3] = stm;
 
     obj_ptr<SeekableStream_base> rsp_stm;
@@ -1219,12 +1242,12 @@ result_t HttpClient::request(exlib::string method, exlib::string url, v8::Local<
 
     exlib::string _method = ac->m_ctx[0].string();
     obj_ptr<Url> u = (Url*)ac->m_ctx[1].object();
-    obj_ptr<NObject> map = (NObject*)ac->m_ctx[2].object();
+    obj_ptr<Headers_base> headers = (Headers_base*)ac->m_ctx[2].object();
     obj_ptr<SeekableStream_base> stm = SeekableStream_base::getInstance(ac->m_ctx[3].object());
     obj_ptr<SeekableStream_base> rsp_stm = SeekableStream_base::getInstance(ac->m_ctx[4].object());
     bool keepAlive = ac->m_ctx[5].boolVal();
 
-    return request(_method, u, stm, rsp_stm, keepAlive, map, retVal, ac, headerOnly);
+    return request(_method, u, stm, rsp_stm, keepAlive, headers, retVal, ac, headerOnly);
 }
 
 result_t HttpClient::request(exlib::string method, exlib::string url,

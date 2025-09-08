@@ -34,8 +34,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<mq_base>& retVal)
@@ -98,7 +97,7 @@ inline void mq_base::s_static_nullHandler(const v8::FunctionCallbackInfo<v8::Val
 
 inline void mq_base::s_static_invoke(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("mq.invoke");
 
     METHOD_OVER(2, 2);
 
@@ -106,9 +105,9 @@ inline void mq_base::s_static_invoke(const v8::FunctionCallbackInfo<v8::Value>& 
     ARG(obj_ptr<object_base>, 1);
 
     if (!cb.IsEmpty())
-        hr = acb_invoke(v0, v1, cb, args);
+        hr = acb_invoke(v0.get(), v1.get(), cb, args);
     else
-        hr = ac_invoke(v0, v1);
+        hr = ac_invoke(v0.get(), v1.get());
 
     METHOD_VOID();
 }

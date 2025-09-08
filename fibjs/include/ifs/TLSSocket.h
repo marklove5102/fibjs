@@ -118,7 +118,7 @@ inline void TLSSocket_base::__new(const v8::FunctionCallbackInfo<v8::Value>& arg
 
     ARG(obj_ptr<SecureContext_base>, 0);
 
-    hr = _new(v0, vr, args.This());
+    hr = _new(v0.get(), vr, args.This());
 
     METHOD_OVER(2, 1);
 
@@ -136,15 +136,11 @@ inline result_t TLSSocket_base::load(Isolate* isolate, v8::Local<v8::Value> v, o
 
     LOAD_ENTER();
 
-    METHOD_OVER(0, 0);
-
-    hr = _new(vr, args.This());
-
     METHOD_OVER(1, 1);
 
     ARG(obj_ptr<SecureContext_base>, 0);
 
-    hr = _new(v0, vr, args.This());
+    hr = _new(v0.get(), vr, args.This());
 
     METHOD_OVER(2, 1);
 
@@ -159,7 +155,7 @@ inline result_t TLSSocket_base::load(Isolate* isolate, v8::Local<v8::Value> v, o
 inline void TLSSocket_base::s_connect(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(TLSSocket_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("TLSSocket.connect");
 
     METHOD_OVER(2, 1);
 
@@ -167,9 +163,9 @@ inline void TLSSocket_base::s_connect(const v8::FunctionCallbackInfo<v8::Value>&
     OPT_ARG(exlib::string, 1, "");
 
     if (!cb.IsEmpty())
-        hr = pInst->acb_connect(v0, v1, cb, args);
+        hr = pInst->acb_connect(v0.get(), v1, cb, args);
     else
-        hr = pInst->ac_connect(v0, v1);
+        hr = pInst->ac_connect(v0.get(), v1);
 
     METHOD_VOID();
 }
@@ -177,16 +173,16 @@ inline void TLSSocket_base::s_connect(const v8::FunctionCallbackInfo<v8::Value>&
 inline void TLSSocket_base::s_accept(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(TLSSocket_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("TLSSocket.accept");
 
     METHOD_OVER(1, 1);
 
     ARG(obj_ptr<Stream_base>, 0);
 
     if (!cb.IsEmpty())
-        hr = pInst->acb_accept(v0, cb, args);
+        hr = pInst->acb_accept(v0.get(), cb, args);
     else
-        hr = pInst->ac_accept(v0);
+        hr = pInst->ac_accept(v0.get());
 
     METHOD_VOID();
 }

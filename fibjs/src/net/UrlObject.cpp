@@ -8,11 +8,25 @@
 #include "object.h"
 #include "Url.h"
 #include "ifs/encoding.h"
+#include "URLSearchParams.h"
 
 namespace fibjs {
 
 static const char* pathTable = " !  $%& ()*+,-./0123456789:; =  @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_ abcdefghijklmnopqrstuvwxyz{|}~ ";
 static ada::url_aggregator s_base;
+
+const struct {
+    const char* protocol;
+    int32_t length;
+} slashedProtocol[] = {
+    { "http:", 5 },
+    { "https:", 6 },
+    { "ftp:", 4 },
+    { "gopher:", 7 },
+    { "file:", 5 },
+    { "ws:", 3 },
+    { "wss:", 4 }
+};
 
 static int32_t is_non_slash_protocol(const char* p, bool slashes)
 {
@@ -30,6 +44,15 @@ static int32_t is_non_slash_protocol(const char* p, bool slashes)
     }
 
     return 0;
+}
+
+static bool is_slashed_protocol(const char* p)
+{
+    for (const auto& proto : slashedProtocol) {
+        if (qstricmp(p, proto.protocol, proto.length) == 0)
+            return true;
+    }
+    return false;
 }
 
 inline bool is_slash(char ch)
@@ -109,6 +132,8 @@ result_t Url::parse(exlib::string url, exlib::string base)
 
 result_t Url::legacy_parse(exlib::string url, bool parseQueryString)
 {
+    m_isLegacy = true;
+
     const char* p = url.c_str();
     const char* p2 = p;
 
@@ -169,7 +194,7 @@ result_t Url::format(v8::Local<v8::Object> args)
         }
     }
 
-    bool slashes = false;
+    bool slashes = is_slashed_protocol(url.c_str());
     if (GetConfigValue(isolate, args, "slashes", slashes) >= 0 && slashes)
         url += "//";
     m_slashes = slashes;
@@ -187,8 +212,8 @@ result_t Url::format(v8::Local<v8::Object> args)
     GetConfigValue(isolate, args, "password", password, true);
 
     if (username.length() > 0 || password.length() > 0) {
-        encoding_base::encodeURIComponent(username, username);
-        encoding_base::encodeURIComponent(password, password);
+        encoding_base::encodeURIComponent(username, false, username);
+        encoding_base::encodeURIComponent(password, false, password);
         url += username;
         if (password.length() > 0)
             url += ":" + password;
@@ -200,7 +225,7 @@ result_t Url::format(v8::Local<v8::Object> args)
         url += ada::idna::to_ascii(str);
         hasHost = true;
     } else if (GetConfigValue(isolate, args, "hostname", str, true) >= 0) {
-        if (str.find(':') != exlib::string::npos && str.c_str()[0] != '[')
+        if (str.find(':') != exlib::string::npos && str[0] != '[')
             url += '[' + str + ']';
         else
             url += ada::idna::to_ascii(str);
@@ -213,7 +238,7 @@ result_t Url::format(v8::Local<v8::Object> args)
 
     if (GetConfigValue(isolate, args, "pathname", str, true) >= 0) {
         if (hasHost && !isJavascript) {
-            if (!is_slash(str.c_str()[0]))
+            if (!is_slash(str[0]))
                 url += "/";
             Url::encodeURI(str, str, pathTable);
         }
@@ -256,6 +281,15 @@ result_t Url::resolve(exlib::string to, obj_ptr<UrlObject_base>& retVal)
 result_t Url::get_href(exlib::string& retVal)
 {
     if (m_url) {
+        if (m_searchParams) {
+            exlib::string searchStr;
+            result_t hr = m_searchParams->toString(searchStr);
+            if (hr < 0)
+                return hr;
+
+            m_url->set_search(searchStr);
+        }
+
         retVal = m_url->get_href();
 
         const char* p = retVal.c_str();
@@ -316,12 +350,10 @@ result_t Url::get_auth(exlib::string& retVal)
         exlib::string password = m_url->get_password();
         exlib::string str;
 
-        encoding_base::encodeURIComponent(username, str);
-        retVal = str;
+        retVal = username;
         if (password.length() > 0) {
             retVal.append(1, ':');
-            encoding_base::encodeURIComponent(password, str);
-            retVal.append(str);
+            retVal.append(password);
         }
     }
 
@@ -330,32 +362,44 @@ result_t Url::get_auth(exlib::string& retVal)
 
 result_t Url::get_username(exlib::string& retVal)
 {
-    if (m_url)
+    if (m_url) {
         retVal = m_url->get_username();
+        if (m_isLegacy)
+            decodeURI(retVal, retVal);
+    }
 
     return 0;
 }
 
 result_t Url::set_username(exlib::string newVal)
 {
-    if (m_url)
+    if (m_url) {
+        if (m_isLegacy)
+            encoding_base::encodeURIComponent(newVal, false, newVal);
         m_url->set_username(newVal);
+    }
 
     return 0;
 }
 
 result_t Url::get_password(exlib::string& retVal)
 {
-    if (m_url)
+    if (m_url) {
         retVal = m_url->get_password();
+        if (m_isLegacy)
+            decodeURI(retVal, retVal);
+    }
 
     return 0;
 }
 
 result_t Url::set_password(exlib::string newVal)
 {
-    if (m_url)
+    if (m_url) {
+        if (m_isLegacy)
+            encoding_base::encodeURIComponent(newVal, false, newVal);
         m_url->set_password(newVal);
+    }
 
     return 0;
 }
@@ -394,8 +438,9 @@ result_t Url::set_hostname(exlib::string newVal)
 
 result_t Url::get_port(exlib::string& retVal)
 {
-    if (m_url)
+    if (m_url) {
         retVal = m_url->get_port();
+    }
 
     return 0;
 }
@@ -436,6 +481,9 @@ result_t Url::set_pathname(exlib::string newVal)
 
 result_t Url::get_search(exlib::string& retVal)
 {
+    if (m_searchParams)
+        return m_searchParams->toString(retVal);
+
     if (m_url)
         retVal = m_url->get_search();
 
@@ -496,11 +544,11 @@ result_t Url::set_query(v8::Local<v8::Value> newVal)
             v8::Local<v8::Value> value = obj->Get(holder()->context(), key).ToLocalChecked();
 
             exlib::string k, v;
-            result_t hr = GetArgumentValue(holder(), key, k, true);
+            result_t hr = GetArgumentValue(holder(), key, k, false);
             if (hr < 0)
                 return hr;
 
-            hr = GetArgumentValue(holder(), value, v, true);
+            hr = GetArgumentValue(holder(), value, v, false);
             if (hr < 0)
                 return hr;
 
@@ -533,7 +581,7 @@ result_t Url::set_hash(exlib::string newVal)
     return 0;
 }
 
-result_t Url::get_searchParams(obj_ptr<HttpCollection_base>& retVal)
+result_t Url::get_searchParams(obj_ptr<URLSearchParams_base>& retVal)
 {
     if (!m_url)
         return CALL_RETURN_UNDEFINED;
@@ -549,17 +597,29 @@ result_t Url::toString(exlib::string& retVal)
     return get_href(retVal);
 }
 
+result_t Url::toJSON(exlib::string key, v8::Local<v8::Value>& retVal)
+{
+    exlib::string href;
+    result_t hr = get_href(href);
+    if (hr < 0)
+        return hr;
+
+    Isolate* isolate = holder();
+    retVal = isolate->NewString(href);
+    return 0;
+}
+
 result_t Url::parse_search_params()
 {
     if (!m_searchParams) {
-        m_searchParams = new HttpCollection();
-        ada::url_search_params search_params(m_url->get_search());
+        exlib::string search = m_url->get_search();
+        if (search[0] == '?')
+            search = search.substr(1); // Remove leading '?'
 
-        auto keys = search_params.get_keys();
-        while (keys.has_next()) {
-            auto key = keys.next().value();
-            m_searchParams->add(key, search_params.get(key).value());
-        }
+        m_searchParams = new URLSearchParams();
+        result_t hr = m_searchParams->parse(search);
+        if (hr < 0)
+            return hr;
     }
 
     return 0;

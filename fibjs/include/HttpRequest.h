@@ -10,6 +10,7 @@
 #include "ifs/HttpRequest.h"
 #include "HttpMessage.h"
 #include "HttpResponse.h"
+#include "Headers.h"
 #include "HttpCollection.h"
 
 namespace fibjs {
@@ -36,7 +37,9 @@ public:
     virtual result_t set_body(SeekableStream_base* newVal);
     virtual result_t read(int32_t bytes, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
     virtual result_t readAll(obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
-    virtual result_t write(Buffer_base* data, AsyncEvent* ac);
+    virtual result_t write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac);
+    virtual result_t text(exlib::string data, exlib::string& retVal);
+    virtual result_t text(exlib::string& retVal);
     virtual result_t json(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal);
     virtual result_t json(v8::Local<v8::Value>& retVal);
     virtual result_t pack(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal);
@@ -55,7 +58,7 @@ public:
     // HttpMessage_base
     virtual result_t get_protocol(exlib::string& retVal);
     virtual result_t set_protocol(exlib::string newVal);
-    virtual result_t get_headers(obj_ptr<HttpCollection_base>& retVal);
+    virtual result_t get_headers(obj_ptr<Headers_base>& retVal);
     virtual result_t get_keepAlive(bool& retVal);
     virtual result_t set_keepAlive(bool newVal);
     virtual result_t get_upgrade(bool& retVal);
@@ -72,9 +75,9 @@ public:
     virtual result_t hasHeader(exlib::string name, bool& retVal);
     virtual result_t firstHeader(exlib::string name, exlib::string& retVal);
     virtual result_t allHeader(exlib::string name, obj_ptr<NObject>& retVal);
-    virtual result_t addHeader(v8::Local<v8::Object> map);
-    virtual result_t addHeader(exlib::string name, v8::Local<v8::Array> values);
-    virtual result_t addHeader(exlib::string name, exlib::string value);
+    virtual result_t appendHeader(v8::Local<v8::Object> map);
+    virtual result_t appendHeader(exlib::string name, v8::Local<v8::Array> values);
+    virtual result_t appendHeader(exlib::string name, exlib::string value);
     virtual result_t setHeader(v8::Local<v8::Object> map);
     virtual result_t setHeader(exlib::string name, v8::Local<v8::Array> values);
     virtual result_t setHeader(exlib::string name, exlib::string value);
@@ -90,11 +93,11 @@ public:
     virtual result_t get_queryString(exlib::string& retVal);
     virtual result_t set_queryString(exlib::string newVal);
     virtual result_t get_cookies(obj_ptr<HttpCollection_base>& retVal);
-    virtual result_t get_form(obj_ptr<HttpCollection_base>& retVal);
-    virtual result_t get_query(obj_ptr<HttpCollection_base>& retVal);
+    virtual result_t get_form(obj_ptr<FormData_base>& retVal);
+    virtual result_t get_query(obj_ptr<URLSearchParams_base>& retVal);
 
 public:
-    void _addHeader(exlib::string name, exlib::string value)
+    void _appendHeader(exlib::string name, exlib::string value)
     {
         if (!qstricmp(name.c_str(), "connection")) {
             if (qstristr(value.c_str(), "keep-alive")) {
@@ -106,23 +109,15 @@ public:
             }
         }
 
-        m_message->addHeader(name, value);
+        m_message->appendHeader(name, value);
     }
 
-    result_t addHeader(NObject* map)
+    result_t appendHeader(Headers_base* map)
     {
-        for (int32_t i = 0; i < (int32_t)map->m_values.size(); i++) {
-            NObject::Value& v = map->m_values[i];
-
-            if (!v.m_val.isUndefined()) {
-                obj_ptr<NArray> list = NArray::getInstance(v.m_val.object());
-
-                if (list) {
-                    for (int32_t i = 0; i < (int32_t)list->m_array.size(); i++)
-                        _addHeader(v.m_pos->first, list->m_array[i].string());
-                } else
-                    _addHeader(v.m_pos->first, v.m_val.string());
-            }
+        Headers* headers = static_cast<Headers*>(map);
+        for (int32_t i = 0; i < (int32_t)headers->m_map.size(); i++) {
+            auto& it = headers->m_map[i];
+            _appendHeader(it.first, it.second.string());
         }
 
         return 0;
@@ -135,8 +130,8 @@ private:
     exlib::string m_address;
     exlib::string m_queryString;
     obj_ptr<HttpCollection_base> m_cookies;
-    obj_ptr<HttpCollection_base> m_query;
-    obj_ptr<HttpCollection_base> m_form;
+    obj_ptr<URLSearchParams_base> m_query;
+    obj_ptr<FormData_base> m_form;
 };
 
 } /* namespace fibjs */

@@ -30,8 +30,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Tray_base>& retVal)
@@ -84,7 +83,7 @@ inline void Tray_base::s_getMenu(const v8::FunctionCallbackInfo<v8::Value>& args
 inline void Tray_base::s_close(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(Tray_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("Tray.close");
 
     METHOD_OVER(0, 0);
 

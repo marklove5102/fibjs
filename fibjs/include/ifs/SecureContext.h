@@ -44,8 +44,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<SecureContext_base>& retVal)
@@ -259,7 +258,7 @@ inline void SecureContext_base::s_setSNIContext(const v8::FunctionCallbackInfo<v
     ARG(exlib::string, 0);
     ARG(obj_ptr<SecureContext_base>, 1);
 
-    hr = pInst->setSNIContext(v0, v1);
+    hr = pInst->setSNIContext(v0, v1.get());
 
     METHOD_OVER(2, 2);
 
@@ -276,7 +275,7 @@ inline void SecureContext_base::s_getSNIContext(const v8::FunctionCallbackInfo<v
     obj_ptr<SecureContext_base> vr;
 
     ASYNC_METHOD_INSTANCE(SecureContext_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("SecureContext.getSNIContext");
 
     METHOD_OVER(2, 1);
 

@@ -130,13 +130,6 @@ inline result_t Routing_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj
 
     hr = _new(v0, vr, args.This());
 
-    METHOD_OVER(2, 2);
-
-    ARG(exlib::string, 0);
-    ARG(v8::Local<v8::Object>, 1);
-
-    hr = _new(v0, v1, vr, args.This());
-
     LOAD_RETURN();
 }
 
@@ -151,7 +144,7 @@ inline void Routing_base::s_append(const v8::FunctionCallbackInfo<v8::Value>& ar
 
     ARG(obj_ptr<Routing_base>, 0);
 
-    hr = pInst->append(v0, vr);
+    hr = pInst->append(v0.get(), vr);
 
     METHOD_OVER(1, 1);
 
@@ -164,7 +157,7 @@ inline void Routing_base::s_append(const v8::FunctionCallbackInfo<v8::Value>& ar
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->append(v0, v1, vr);
+    hr = pInst->append(v0, v1.get(), vr);
 
     METHOD_OVER(3, 3);
 
@@ -172,7 +165,7 @@ inline void Routing_base::s_append(const v8::FunctionCallbackInfo<v8::Value>& ar
     ARG(exlib::string, 1);
     ARG(obj_ptr<Handler_base>, 2);
 
-    hr = pInst->append(v0, v1, v2, vr);
+    hr = pInst->append(v0, v1, v2.get(), vr);
 
     METHOD_RETURN();
 }
@@ -195,7 +188,7 @@ inline void Routing_base::s__host(const v8::FunctionCallbackInfo<v8::Value>& arg
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->_host(v0, v1, vr);
+    hr = pInst->_host(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -218,7 +211,7 @@ inline void Routing_base::s_all(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->all(v0, v1, vr);
+    hr = pInst->all(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -241,7 +234,7 @@ inline void Routing_base::s_get(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->get(v0, v1, vr);
+    hr = pInst->get(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -264,7 +257,7 @@ inline void Routing_base::s_post(const v8::FunctionCallbackInfo<v8::Value>& args
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->post(v0, v1, vr);
+    hr = pInst->post(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -287,7 +280,7 @@ inline void Routing_base::s_del(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->del(v0, v1, vr);
+    hr = pInst->del(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -310,7 +303,7 @@ inline void Routing_base::s_put(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->put(v0, v1, vr);
+    hr = pInst->put(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -333,7 +326,7 @@ inline void Routing_base::s_patch(const v8::FunctionCallbackInfo<v8::Value>& arg
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->patch(v0, v1, vr);
+    hr = pInst->patch(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -356,7 +349,7 @@ inline void Routing_base::s_find(const v8::FunctionCallbackInfo<v8::Value>& args
     ARG(exlib::string, 0);
     ARG(obj_ptr<Handler_base>, 1);
 
-    hr = pInst->find(v0, v1, vr);
+    hr = pInst->find(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }

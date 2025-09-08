@@ -178,6 +178,16 @@ describe('process', () => {
         console.dir(process.memoryUsage());
     });
 
+    it("resourceUsage", () => {
+        let usage = process.resourceUsage();
+        assert.property(usage, 'userCPUTime');
+        assert.property(usage, 'systemCPUTime');
+        assert.property(usage, 'maxRSS');
+        assert.property(usage, 'sharedMemorySize');
+        assert.property(usage, 'unsharedDataSize');
+        assert.property(usage, 'unsharedStackSize');
+    });
+
     it("version", () => {
         assert.ok(process.version);
     });
@@ -190,6 +200,13 @@ describe('process', () => {
         assert.equal(globalThis, global);
         assert.equal(globalThis.global, global);
         assert.equal(globalThis, global.globalThis);
+    });
+
+    it('BUGFIX: process.env exists key', () => {
+        process.env.test_key = 'test_value';
+        assert.isTrue('test_key' in process.env);
+        assert.isFalse('test_key_1' in process.env);
+        delete process.env.test_key;
     });
 });
 

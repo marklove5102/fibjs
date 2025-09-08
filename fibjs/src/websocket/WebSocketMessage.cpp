@@ -63,9 +63,19 @@ result_t WebSocketMessage::readAll(obj_ptr<Buffer_base>& retVal, AsyncEvent* ac)
     return m_message->readAll(retVal, ac);
 }
 
-result_t WebSocketMessage::write(Buffer_base* data, AsyncEvent* ac)
+result_t WebSocketMessage::write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac)
 {
-    return m_message->write(data, ac);
+    return m_message->write(data, retVal, ac);
+}
+
+result_t WebSocketMessage::text(exlib::string data, exlib::string& retVal)
+{
+    return m_message->text(data, retVal);
+}
+
+result_t WebSocketMessage::text(exlib::string& retVal)
+{
+    return m_message->text(retVal);
 }
 
 result_t WebSocketMessage::json(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal)
@@ -174,7 +184,7 @@ result_t WebSocketMessage::copy(Stream_base* from, Stream_base* to, int64_t byte
             if (m_bytes > 0)
                 m_bytes -= blen;
 
-            return m_to->write(m_buf, next(read));
+            return m_to->write(m_buf, m_len, next(read));
         }
 
     public:
@@ -182,6 +192,7 @@ result_t WebSocketMessage::copy(Stream_base* from, Stream_base* to, int64_t byte
         obj_ptr<Stream_base> m_to;
         int64_t m_bytes;
         uint32_t m_mask;
+        int32_t m_len;
         int64_t m_copyed;
         obj_ptr<Buffer_base> m_buf;
     };
@@ -290,7 +301,7 @@ result_t WebSocketMessage::sendTo(Stream_base* stm, WebSocket* wss, AsyncEvent* 
             }
 
             m_buffer = new Buffer((const char*)buf, pos);
-            return m_stm->write(m_buffer, next(sendData));
+            return m_stm->write(m_buffer, m_len, next(sendData));
         }
 
         ON_STATE(asyncSendTo, sendData)
@@ -315,6 +326,7 @@ result_t WebSocketMessage::sendTo(Stream_base* stm, WebSocket* wss, AsyncEvent* 
         obj_ptr<SeekableStream_base> m_body;
         int64_t m_size;
         uint32_t m_mask;
+        int32_t m_len;
         obj_ptr<Buffer_base> m_buffer;
         bool m_take_over;
     };
@@ -467,7 +479,7 @@ result_t WebSocketMessage::readFrom(Stream_base* stm, WebSocket* wss, AsyncEvent
             }
 
             if (m_take_over)
-                return m_zip->write(m_wss->m_flushTail, next(tail_end));
+                return m_zip->write(m_wss->m_flushTail, m_len, next(tail_end));
 
             return m_zip->flush(next(body_end));
         }
@@ -506,6 +518,7 @@ result_t WebSocketMessage::readFrom(Stream_base* stm, WebSocket* wss, AsyncEvent
         int64_t m_size;
         int64_t m_fullsize;
         uint32_t m_mask;
+        int32_t m_len;
         bool m_take_over;
     };
 

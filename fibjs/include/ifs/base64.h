@@ -30,8 +30,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<base64_base>& retVal)
@@ -75,7 +74,7 @@ inline void base64_base::s_static_encode(const v8::FunctionCallbackInfo<v8::Valu
     ARG(obj_ptr<Buffer_base>, 0);
     OPT_ARG(bool, 1, false);
 
-    hr = encode(v0, v1, vr);
+    hr = encode(v0.get(), v1, vr);
 
     METHOD_RETURN();
 }

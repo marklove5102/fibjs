@@ -414,7 +414,7 @@ result_t commonDecode(exlib::string codec, exlib::string data, exlib::string& re
             char* _retVal = retVal.data();
 
             for (i = 0; i < sz; i++)
-                _retVal[i] = data.c_str()[i] & 0x7f;
+                _retVal[i] = data[i] & 0x7f;
         } else
             return encoding_iconv(codec).encode(data, retVal);
     }
@@ -647,9 +647,9 @@ result_t encoding_base::encodeURI(exlib::string url, exlib::string& retVal)
     return 0;
 }
 
-result_t encoding_base::encodeURIComponent(exlib::string url, exlib::string& retVal)
+result_t encoding_base::encodeURIComponent(exlib::string url, bool formEncoded, exlib::string& retVal)
 {
-    Url::encodeURI(url, retVal, URIComponentTable);
+    Url::encodeURI(url, retVal, URIComponentTable, formEncoded);
     return 0;
 }
 

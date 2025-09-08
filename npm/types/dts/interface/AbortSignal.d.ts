@@ -7,9 +7,23 @@ declare class Class_AbortSignal extends Class_EventEmitter {
     /**
      * @description 用于中止一个或多个 Web 请求
      *      @param reason 一个可选的字符串，用于描述中止请求的原因
+     *      @return 返回一个 AbortSignal 对象
      *     
      */
-    abort(reason?: string): void;
+    abort(reason?: string): Class_AbortSignal;
+
+    /**
+     * @description 用于中止一个或多个 Web 请求
+     *      @param reason 一个任意类型的值，用于描述中止请求的原因
+     *      @return 返回一个 AbortSignal 对象
+     *     
+     */
+    abort(reason: any): Class_AbortSignal;
+
+    /**
+     * @description 如果请求已中止，则抛出异常 
+     */
+    throwIfAborted(): void;
 
     /**
      * @description 用于检查是否已请求中止 
@@ -17,9 +31,14 @@ declare class Class_AbortSignal extends Class_EventEmitter {
     readonly aborted: boolean;
 
     /**
+     * @description 获取中止请求的原因 
+     */
+    readonly reason: any;
+
+    /**
      * @description 事件处理程序，当中止请求时触发 
      */
-    readonly onabort: (...args: any[])=>any;
+    on(event: "abort", listener: ()=>void): this;
 
 }
 

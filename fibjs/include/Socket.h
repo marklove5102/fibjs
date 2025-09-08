@@ -11,10 +11,11 @@
 #include "inetAddr.h"
 #include "AsyncIO.h"
 #include "Timer.h"
+#include "AsyncStream.h"
 
 namespace fibjs {
 
-class Socket : public Socket_base {
+class Socket : public AsyncStream<Socket_base> {
     FIBER_FREE();
 
 public:
@@ -47,7 +48,7 @@ public:
     virtual result_t get_fd(int32_t& retVal);
     virtual result_t read(int32_t bytes, obj_ptr<Buffer_base>& retVal,
         AsyncEvent* ac);
-    virtual result_t write(Buffer_base* data, AsyncEvent* ac);
+    virtual result_t write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac);
     virtual result_t flush(AsyncEvent* ac);
     virtual result_t close(AsyncEvent* ac);
     virtual result_t copyTo(Stream_base* stm, int64_t bytes, int64_t& retVal, AsyncEvent* ac);
@@ -67,7 +68,7 @@ public:
     virtual result_t listen(int32_t backlog);
     virtual result_t accept(obj_ptr<Socket_base>& retVal, AsyncEvent* ac);
     virtual result_t recv(int32_t bytes, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
-    virtual result_t send(Buffer_base* data, AsyncEvent* ac);
+    virtual result_t send(Buffer_base* data, int32_t& retVal, AsyncEvent* ac);
 
 public:
     static result_t create(int32_t family, obj_ptr<Socket_base>& retVal);

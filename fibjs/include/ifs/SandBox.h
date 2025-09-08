@@ -156,28 +156,6 @@ inline result_t SandBox_base::load(Isolate* isolate, v8::Local<v8::Value> v, obj
 
     hr = _new(v0, vr, args.This());
 
-    METHOD_OVER(2, 2);
-
-    ARG(v8::Local<v8::Object>, 0);
-    ARG(v8::Local<v8::Function>, 1);
-
-    hr = _new(v0, v1, vr, args.This());
-
-    METHOD_OVER(2, 2);
-
-    ARG(v8::Local<v8::Object>, 0);
-    ARG(v8::Local<v8::Object>, 1);
-
-    hr = _new(v0, v1, vr, args.This());
-
-    METHOD_OVER(3, 3);
-
-    ARG(v8::Local<v8::Object>, 0);
-    ARG(v8::Local<v8::Function>, 1);
-    ARG(v8::Local<v8::Object>, 2);
-
-    hr = _new(v0, v1, v2, vr, args.This());
-
     LOAD_RETURN();
 }
 
@@ -226,7 +204,7 @@ inline void SandBox_base::s_addScript(const v8::FunctionCallbackInfo<v8::Value>&
     ARG(exlib::string, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = pInst->addScript(v0, v1, vr);
+    hr = pInst->addScript(v0, v1.get(), vr);
 
     METHOD_RETURN();
 }

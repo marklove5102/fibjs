@@ -40,8 +40,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<SeekableStream_base>& retVal)
@@ -153,7 +152,7 @@ inline void SeekableStream_base::s_readAll(const v8::FunctionCallbackInfo<v8::Va
     obj_ptr<Buffer_base> vr;
 
     ASYNC_METHOD_INSTANCE(SeekableStream_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("SeekableStream.readAll");
 
     METHOD_OVER(0, 0);
 
@@ -168,7 +167,7 @@ inline void SeekableStream_base::s_readAll(const v8::FunctionCallbackInfo<v8::Va
 inline void SeekableStream_base::s_truncate(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(SeekableStream_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("SeekableStream.truncate");
 
     METHOD_OVER(1, 1);
 
@@ -201,7 +200,7 @@ inline void SeekableStream_base::s_stat(const v8::FunctionCallbackInfo<v8::Value
     obj_ptr<Stat_base> vr;
 
     ASYNC_METHOD_INSTANCE(SeekableStream_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("SeekableStream.stat");
 
     METHOD_OVER(0, 0);
 

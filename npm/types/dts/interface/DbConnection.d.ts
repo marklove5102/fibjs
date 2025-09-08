@@ -36,6 +36,27 @@ declare class Class_DbConnection extends Class_object {
     use(dbName: string, callback: (err: Error | undefined | null)=>any): void;
 
     /**
+     * @description 获取当前数据库中所有表的信息
+     * 
+     *      @return 返回包含表信息的数组，每个元素包含表名和相关属性
+     *      
+     */
+    getTables(): any[];
+
+    getTables(callback: (err: Error | undefined | null, retVal: any[])=>any): void;
+
+    /**
+     * @description 获取指定表的详细信息
+     * 
+     *      @param tableName 指定要查询的表名
+     *      @return 返回包含表详细信息的数组，每个元素包含字段名、类型、长度、是否允许 NULL 等属性
+     *      
+     */
+    getTableInfo(tableName: string): any[];
+
+    getTableInfo(tableName: string, callback: (err: Error | undefined | null, retVal: any[])=>any): void;
+
+    /**
      * @description 在当前数据库连接上启动一个事务
      *     
      *      @param point 指定事务的名称，缺省不指定
@@ -43,7 +64,7 @@ declare class Class_DbConnection extends Class_object {
      */
     begin(point?: string): void;
 
-    begin(point?: string, callback?: (err: Error | undefined | null)=>any): void;
+    begin(point?: string, callback: (err: Error | undefined | null)=>any): void;
 
     /**
      * @description 提交当前数据库连接上的事务
@@ -53,7 +74,7 @@ declare class Class_DbConnection extends Class_object {
      */
     commit(point?: string): void;
 
-    commit(point?: string, callback?: (err: Error | undefined | null)=>any): void;
+    commit(point?: string, callback: (err: Error | undefined | null)=>any): void;
 
     /**
      * @description 回滚当前数据库连接上的事务
@@ -63,7 +84,7 @@ declare class Class_DbConnection extends Class_object {
      */
     rollback(point?: string): void;
 
-    rollback(point?: string, callback?: (err: Error | undefined | null)=>any): void;
+    rollback(point?: string, callback: (err: Error | undefined | null)=>any): void;
 
     /**
      * @description 进入事务执行一个函数，并根据函数执行情况提交或者回滚 
@@ -112,111 +133,6 @@ declare class Class_DbConnection extends Class_object {
      *      
      */
     execute(sql: string, ...args: any[]): any[];
-
-    /**
-     * @description 创建数据表
-     * 
-     *      @param opts 参数列表
-     *      
-     */
-    createTable(opts: FIBJS.GeneralObject): void;
-
-    createTable(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null)=>any): void;
-
-    /**
-     * @description 删除数据表
-     * 
-     *      @param opts 参数列表
-     *      
-     */
-    dropTable(opts: FIBJS.GeneralObject): void;
-
-    dropTable(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null)=>any): void;
-
-    /**
-     * @description 创建数据表索引
-     * 
-     *      @param opts 参数列表
-     *      
-     */
-    createIndex(opts: FIBJS.GeneralObject): void;
-
-    createIndex(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null)=>any): void;
-
-    /**
-     * @description 删除数据表索引
-     * 
-     *      @param opts 参数列表
-     *      
-     */
-    dropIndex(opts: FIBJS.GeneralObject): void;
-
-    dropIndex(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null)=>any): void;
-
-    /**
-     * @description 插入新记录
-     * 
-     *      @param opts 参数列表
-     *      @return 返回包含插入的 id，如果引擎不支持则返回 0
-     *      
-     */
-    insert(opts: FIBJS.GeneralObject): number;
-
-    insert(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: number)=>any): void;
-
-    /**
-     * @description 根据指定的条件查询数据
-     * 
-     *      @param opts 参数列表
-     *      @return 返回包含结果记录
-     *      
-     */
-    find(opts: FIBJS.GeneralObject): any[];
-
-    find(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: any[])=>any): void;
-
-    /**
-     * @description 根据指定的条件统计数据记录数
-     * 
-     *      @param opts 参数列表
-     *      @return 返回包含结果记录数
-     *      
-     */
-    count(opts: FIBJS.GeneralObject): number;
-
-    count(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: number)=>any): void;
-
-    /**
-     * @description 根据指定的条件更新数据
-     * 
-     *      @param opts 参数列表
-     *      @return 返回包含更新的记录数
-     *      
-     */
-    update(opts: FIBJS.GeneralObject): number;
-
-    update(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: number)=>any): void;
-
-    /**
-     * @description 根据指定的条件删除数据
-     * 
-     *      @param opts 可选参数列表
-     *      @return 返回包含更新的记录数
-     *      
-     */
-    remove(opts: FIBJS.GeneralObject): number;
-
-    remove(opts: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: number)=>any): void;
-
-    /**
-     * @description 格式化一个 sql 命令，并返回格式化结果
-     * 
-     *      @param method 指定请求的方法
-     *      @param opts 可选参数列表
-     *      @return 返回格式化之后的 sql 命令
-     *      
-     */
-    format(method: string, opts: FIBJS.GeneralObject): string;
 
     /**
      * @description 格式化一个 sql 命令，并返回格式化结果

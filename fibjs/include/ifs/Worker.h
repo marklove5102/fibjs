@@ -20,17 +20,12 @@ class EventEmitter_base;
 
 class Worker_base : public EventEmitter_base {
     DECLARE_CLASS(Worker_base);
+    EVENT_SUPPORT();
 
 public:
     // Worker_base
     static result_t _new(exlib::string path, v8::Local<v8::Object> opts, obj_ptr<Worker_base>& retVal, v8::Local<v8::Object> This = v8::Local<v8::Object>());
     virtual result_t postMessage(v8::Local<v8::Value> data) = 0;
-    virtual result_t get_onload(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onload(v8::Local<v8::Function> newVal) = 0;
-    virtual result_t get_onmessage(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onmessage(v8::Local<v8::Function> newVal) = 0;
-    virtual result_t get_onerror(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onerror(v8::Local<v8::Function> newVal) = 0;
 
 public:
     static void __new(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -133,7 +128,7 @@ inline void Worker_base::s_get_onload(const v8::FunctionCallbackInfo<v8::Value>&
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onload(vr);
+    hr = pInst->getListener("load", vr);
 
     METHOD_RETURN();
 }
@@ -147,7 +142,7 @@ inline void Worker_base::s_set_onload(const v8::FunctionCallbackInfo<v8::Value>&
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onload(v0);
+    hr = pInst->setListener("load", v0);
 
     METHOD_VOID();
 }
@@ -161,7 +156,7 @@ inline void Worker_base::s_get_onmessage(const v8::FunctionCallbackInfo<v8::Valu
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onmessage(vr);
+    hr = pInst->getListener("message", vr);
 
     METHOD_RETURN();
 }
@@ -175,7 +170,7 @@ inline void Worker_base::s_set_onmessage(const v8::FunctionCallbackInfo<v8::Valu
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onmessage(v0);
+    hr = pInst->setListener("message", v0);
 
     METHOD_VOID();
 }
@@ -189,7 +184,7 @@ inline void Worker_base::s_get_onerror(const v8::FunctionCallbackInfo<v8::Value>
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onerror(vr);
+    hr = pInst->getListener("error", vr);
 
     METHOD_RETURN();
 }
@@ -203,7 +198,7 @@ inline void Worker_base::s_set_onerror(const v8::FunctionCallbackInfo<v8::Value>
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onerror(v0);
+    hr = pInst->setListener("error", v0);
 
     METHOD_VOID();
 }

@@ -1,6 +1,7 @@
 /// <reference path="../_import/_fibjs.d.ts" />
 /// <reference path="../interface/XmlNode.d.ts" />
 /// <reference path="../interface/XmlNamedNodeMap.d.ts" />
+/// <reference path="../interface/XmlAttr.d.ts" />
 /// <reference path="../interface/XmlNodeList.d.ts" />
 /**
  * @description XmlElement 对象表示 XML 文档中的元素
@@ -79,6 +80,27 @@ declare class Class_XmlElement extends Class_XmlNode {
     getAttributeNS(namespaceURI: string, localName: string): string;
 
     /**
+     * @description 返回指定名称的属性节点
+     * 
+     *      该方法返回一个 XmlAttr 对象，表示当前元素的指定名称的属性。如果没有具有指定名称的属性，则返回 NULL。
+     *      @param name 指定查询的属性名
+     *      @return 返回指定名称的 XmlAttr 对象，如果没有具有指定名称的属性，则返回 NULL
+     *     
+     */
+    getAttributeNode(name: string): Class_XmlAttr;
+
+    /**
+     * @description 返回具有命名空间 URI 和名称的属性节点
+     * 
+     *      该方法返回一个 XmlAttr 对象，表示当前元素的指定命名空间 URI 和名称的属性。如果没有具有指定名称的属性，则返回 NULL。
+     *      @param namespaceURI 指定查询的命名空间 URI
+     *      @param localName 指定查询的属性名
+     *      @return 返回指定名称的 XmlAttr 对象，如果没有具有指定名称的属性，则返回 NULL
+     *     
+     */
+    getAttributeNodeNS(namespaceURI: string, localName: string): Class_XmlAttr;
+
+    /**
      * @description 创建或改变某个新属性
      * 
      *      该方法把指定的属性设置为指定的值。如果不存在具有指定名称的属性，该方法将创建一个新属性
@@ -100,6 +122,16 @@ declare class Class_XmlElement extends Class_XmlNode {
     setAttributeNS(namespaceURI: string, qualifiedName: string, value: string): void;
 
     /**
+     * @description 设置指定的属性对象
+     * 
+     *      该方法将指定的 XmlAttr 对象设置为当前元素的属性。如果当前元素已经有同名的属性，则该方法将替换它
+     *      @param attr 指定要设置的 XmlAttr 对象
+     *      @return 返回被替换的 XmlAttr 对象，如果没有被替换则返回 NULL
+     *     
+     */
+    setAttributeNode(attr: Class_XmlAttr): Class_XmlAttr;
+
+    /**
      * @description 通过名称删除指定的属性
      *      @param name 指定删除的属性名
      *     
@@ -113,6 +145,16 @@ declare class Class_XmlElement extends Class_XmlNode {
      *     
      */
     removeAttributeNS(namespaceURI: string, localName: string): void;
+
+    /**
+     * @description 删除指定的属性节点
+     * 
+     *      该方法将从当前元素的属性列表中删除指定的 XmlAttr 对象。如果当前元素没有指定的属性，则该方法无效
+     *      @param attr 指定要删除的 XmlAttr 对象
+     *      @return 返回被删除的 XmlAttr 对象，如果没有被删除则返回 NULL
+     *     
+     */
+    removeAttributeNode(attr: Class_XmlAttr): Class_XmlAttr;
 
     /**
      * @description 查询当前节点是否拥有指定名称的属性
@@ -175,6 +217,34 @@ declare class Class_XmlElement extends Class_XmlNode {
      *     
      */
     getElementsByClassName(className: string): Class_XmlNodeList;
+
+    /**
+     * @description 返回符合指定 CSS 选择器的元素的 XmlNodeList
+     * 
+     *      该方法将返回一个 XmlNodeList 对象（可以作为只读数组处理），该对象存放文档中符合指定 CSS 选择器的所有 XmlElement 节点，它们存放的顺序就是在源文档中出现的顺序。 XmlNodeList 对象是“活”的，即如果在文档中添加或删除了符合指定选择器的元素，它的内容会自动进行必要的更新。
+     *      @param selectors 指定 CSS 选择器
+     *      @return 符合指定 CSS 选择器的 XmlElement 节点
+     *     
+     */
+    querySelector(selectors: string): Class_XmlElement;
+
+    /**
+     * @description 返回符合指定 CSS 选择器的所有元素的 XmlNodeList
+     * 
+     *      该方法将返回一个 XmlNodeList 对象（可以作为只读数组处理），该对象存放文档中符合指定 CSS 选择器的所有 XmlElement 节点，它们存放的顺序就是在源文档中出现的顺序。 XmlNodeList 对象是“活”的，即如果在文档中添加或删除了符合指定选择器的元素，它的内容会自动进行必要的更新。
+     *      @param selectors 指定 CSS 选择器
+     *      @return 符合指定 CSS 选择器的 XmlElement 节点的 XmlNodeList 集合。返回的元素节点的顺序就是它们在源文档中出现的顺序。
+     *     
+     */
+    querySelectorAll(selectors: string): Class_XmlNodeList;
+
+    /**
+     * @description 查询当前元素是否匹配指定的 CSS 选择器
+     *      @param selectors 指定 CSS 选择器
+     *      @return 如果当前元素匹配指定选择器，则返回 true，否则返回 false
+     *     
+     */
+    matches(selectors: string): boolean;
 
 }
 

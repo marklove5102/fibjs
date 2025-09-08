@@ -6,7 +6,7 @@
  */
 
 #include "console.h"
-#include "File.h"
+#include "FileStream.h"
 #include "ifs/fs.h"
 #include "path.h"
 #include "Buffer.h"
@@ -61,16 +61,16 @@ result_t file_logger::config(Isolate* isolate, v8::Local<v8::Object> o)
                 return CHECK_ERROR(Runtime::setError("console: Unknown split mode."));
 
             for (i = 0; i < l - 1; i++)
-                if (!qisdigit(split.c_str()[i]))
+                if (!qisdigit(split[i]))
                     return CHECK_ERROR(Runtime::setError("console: Unknown split mode."));
                 else
-                    m_split_size = m_split_size * 10 + split.c_str()[i] - '0';
+                    m_split_size = m_split_size * 10 + split[i] - '0';
 
-            if (split.c_str()[i] == 'k')
+            if (split[i] == 'k')
                 m_split_size <<= 10;
-            else if (split.c_str()[i] == 'm')
+            else if (split[i] == 'm')
                 m_split_size <<= 20;
-            else if (split.c_str()[i] == 'g')
+            else if (split[i] == 'g')
                 m_split_size <<= 30;
             else
                 return CHECK_ERROR(Runtime::setError("console: Unknown split mode."));
@@ -160,7 +160,7 @@ result_t file_logger::initFile()
     result_t hr;
 
     if (!m_file) {
-        obj_ptr<File> f = new File();
+        obj_ptr<FileStream> f = new FileStream();
         exlib::string name(m_folder);
         resolvePath(name, m_name1);
 

@@ -6,12 +6,13 @@
  */
 
 #include "object.h"
+#include "ifs/url.h"
 #include "SandBox.h"
 #include "path.h"
 
 namespace fibjs {
 
-void _resolve(const v8::FunctionCallbackInfo<v8::Value>& args)
+static void _resolve(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     int32_t argc = args.Length();
 
@@ -53,7 +54,7 @@ void _resolve(const v8::FunctionCallbackInfo<v8::Value>& args)
     args.GetReturnValue().Set(V8_RETURN(sbox->holder()->NewString(v)));
 }
 
-void _require(const v8::FunctionCallbackInfo<v8::Value>& args)
+static void _require(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     int32_t argc = args.Length();
 
@@ -100,7 +101,7 @@ void _require(const v8::FunctionCallbackInfo<v8::Value>& args)
     args.GetReturnValue().Set(V8_RETURN(v));
 }
 
-void _run(const v8::FunctionCallbackInfo<v8::Value>& args)
+static void _run(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     Isolate* isolate = Isolate::current(args);
     V8_SCOPE(isolate->m_isolate);
@@ -151,6 +152,50 @@ void _run(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
 }
 
+static void _createRequire(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    int32_t argc = args.Length();
+
+    if (argc < 1) {
+        ThrowResult(CALL_E_PARAMNOTOPTIONAL);
+        return;
+    }
+
+    if (argc > 1) {
+        ThrowResult(CALL_E_BADPARAMCOUNT);
+        return;
+    }
+
+    Isolate* isolate = Isolate::current(args);
+    v8::Local<v8::Context> context = isolate->context();
+    V8_SCOPE(isolate->m_isolate);
+
+    exlib::string id;
+    result_t hr = GetArgumentValue(isolate, args[0], id);
+    if (hr < 0) {
+        ThrowResult(hr);
+        return;
+    }
+
+    if (!qstrcmp(id.c_str(), "file:", 5)) {
+        exlib::string path;
+        hr = url_base::fileURLToPath(id, v8::Local<v8::Object>(), path);
+        if (hr < 0) {
+            ThrowResult(hr);
+            return;
+        }
+
+        id = path;
+    }
+
+    v8::Local<v8::Object> _mod = v8::Object::New(isolate->m_isolate);
+
+    _mod->Set(context, isolate->NewString("_sbox"), args.Data()).IsJust();
+    _mod->Set(context, isolate->NewString("_id"), isolate->NewString(id)).IsJust();
+
+    args.GetReturnValue().Set(isolate->NewFunction("require", _require, _mod));
+}
+
 SandBox::Context::Context(SandBox* sb, exlib::string id)
     : m_sb(sb)
     , m_id(id)
@@ -169,4 +214,18 @@ SandBox::Context::Context(SandBox* sb, exlib::string id)
 
     m_fnRun = isolate->NewFunction("run", _run, _mod);
 }
+
+void SandBox::initModule()
+{
+    Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
+
+    v8::Local<v8::Object> _mod = v8::Object::New(isolate->m_isolate);
+    _mod->Set(context, isolate->NewString("createRequire"), isolate->NewFunction("createRequire", _createRequire, wrap(isolate))).IsJust();
+
+    add("module", _mod);
+    add("node:module", _mod);
+    add("fibjs:module", _mod);
+}
+
 }

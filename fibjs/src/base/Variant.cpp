@@ -101,6 +101,12 @@ Variant::operator v8::Local<v8::Value>() const
         obj->valueOf(v);
         return v;
     }
+    case VT_ArrayBuffer:
+        if (m_Val.arrayBuffer) {
+            std::shared_ptr<v8::BackingStore> backingStore = *reinterpret_cast<const std::shared_ptr<v8::BackingStore>*>(m_Val.arrayBuffer);
+            return v8::ArrayBuffer::New(isolate->m_isolate, backingStore);
+        }
+        break;
     case VT_JSValue:
         return jsVal();
     case VT_JSON: {
@@ -295,6 +301,7 @@ void Variant::toString(exlib::string& retVal) const
     case VT_Date:
         dateVal().toGMTString(retVal);
         break;
+
     case VT_Object: {
         object_base* obj = (object_base*)m_Val.objVal;
 
@@ -308,11 +315,19 @@ void Variant::toString(exlib::string& retVal) const
     case VT_String:
         retVal = strVal();
         break;
-    case VT_JSValue:
+
+    case VT_JSValue: {
+        v8::Local<v8::Value>& v = jsVal();
+        Isolate* isolate = Isolate::current();
+        GetArgumentValue(isolate, v, retVal);
+        break;
+    }
+
     case VT_UNBOUND_ARRAY:
     case VT_UNBOUND_OBJECT:
         retVal = "[Object]";
         break;
+
     case VT_JSON:
         retVal = strVal();
         break;

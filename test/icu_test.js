@@ -6,14 +6,14 @@ const { execFileSync } = require('child_process');
 function runEnvOutside(addEnv, code) {
     return execFileSync(
         process.execPath,
-        ['-e', `process.stdout.write(String(${code}));`],
+        ['-e', `(function(){process.stdout.write(String(${code}));})()`],
         {
             env: {
                 ...process.env,
                 ...addEnv
             }
         }
-    ).stdout;
+    );
 }
 
 function runEnvInside(addEnv, func, ...args) {

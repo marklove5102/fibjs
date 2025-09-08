@@ -16,6 +16,7 @@
 #include "encoding.h"
 #include "MemoryStream.h"
 #include "HttpClient.h"
+#include "Headers.h"
 #include <stdlib.h>
 
 namespace fibjs {
@@ -25,7 +26,7 @@ DECLARE_MODULE(ws);
 #define WS_DEFALTE_BUF_SIZE (32 * 1024)
 
 result_t http_request2(HttpClient_base* httpClient, exlib::string method, exlib::string url,
-    SeekableStream_base* body, NObject* headers,
+    SeekableStream_base* body, Headers_base* headers,
     obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac);
 
 class asyncSend : public AsyncState {
@@ -39,7 +40,8 @@ public:
 
         obj_ptr<Buffer_base> _data = new Buffer(data.c_str(), data.length());
         m_msg = new WebSocketMessage(type, m_this->m_masked, m_this->m_compress, 0);
-        m_msg->cc_write(_data);
+        int32_t len;
+        m_msg->cc_write(_data, len);
 
         next(start);
     }
@@ -52,7 +54,8 @@ public:
         m_this->m_ioState.inc();
 
         m_msg = new WebSocketMessage(type, m_this->m_masked, m_this->m_compress, 0);
-        m_msg->cc_write(data);
+        int32_t len;
+        m_msg->cc_write(data, len);
 
         next(start);
     }
@@ -73,7 +76,8 @@ public:
         obj_ptr<Buffer_base> data = new Buffer(buf.c_str(), buf.length());
 
         m_msg = new WebSocketMessage(ws_base::C_CLOSE, m_this->m_masked, m_this->m_compress, 0);
-        m_msg->cc_write(data);
+        int32_t len;
+        m_msg->cc_write(data, len);
 
         next(start);
     }
@@ -196,7 +200,7 @@ result_t WebSocket_base::_new(exlib::string url, v8::Local<v8::Object> opts,
 {
     class asyncConnect : public AsyncState {
     public:
-        asyncConnect(WebSocket* pThis, obj_ptr<NObject> headers, HttpClient_base* hc, Isolate* isolate)
+        asyncConnect(WebSocket* pThis, obj_ptr<Headers_base> headers, HttpClient_base* hc, Isolate* isolate)
             : AsyncState(NULL)
             , m_this(pThis)
             , m_headers(headers)
@@ -226,15 +230,15 @@ result_t WebSocket_base::_new(exlib::string url, v8::Local<v8::Object> opts,
                 return CHECK_ERROR(Runtime::setError("websocket: unknown protocol"));
             }
 
-            m_headers->add("Upgrade", "websocket");
-            m_headers->add("Connection", "Upgrade");
-            m_headers->add("Sec-WebSocket-Version", "13");
+            m_headers->append("Upgrade", "websocket");
+            m_headers->append("Connection", "Upgrade");
+            m_headers->append("Sec-WebSocket-Version", "13");
 
             if (m_this->m_enableCompress)
-                m_headers->add("Sec-WebSocket-Extensions", "permessage-deflate");
+                m_headers->append("Sec-WebSocket-Extensions", "permessage-deflate");
 
             if (!m_this->m_origin.empty())
-                m_headers->add("Origin", m_this->m_origin);
+                m_headers->append("Origin", m_this->m_origin);
 
             char keys[16];
             int32_t i;
@@ -245,7 +249,7 @@ result_t WebSocket_base::_new(exlib::string url, v8::Local<v8::Object> opts,
             exlib::string key;
             base64Encode((const char*)&keys, sizeof(keys), false, key);
 
-            m_headers->add("Sec-WebSocket-Key", key);
+            m_headers->append("Sec-WebSocket-Key", key);
 
             key.append("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 
@@ -334,7 +338,7 @@ result_t WebSocket_base::_new(exlib::string url, v8::Local<v8::Object> opts,
         Isolate* m_isolate;
         obj_ptr<WebSocket> m_this;
         obj_ptr<HttpResponse_base> m_httprep;
-        obj_ptr<NObject> m_headers;
+        obj_ptr<Headers_base> m_headers;
         obj_ptr<HttpClient_base> m_hc;
         exlib::string m_accept;
     };
@@ -344,8 +348,7 @@ result_t WebSocket_base::_new(exlib::string url, v8::Local<v8::Object> opts,
     exlib::string protocol = "";
     bool perMessageDeflate = false;
     int32_t maxPayload = WS_DEF_SIZE;
-    v8::Local<v8::Object> v;
-    obj_ptr<NObject> headers = new NObject();
+    obj_ptr<Headers_base> headers;
     obj_ptr<HttpClient_base> hc = NULL;
 
     GetConfigValue(isolate, opts, "protocol", protocol);
@@ -353,8 +356,11 @@ result_t WebSocket_base::_new(exlib::string url, v8::Local<v8::Object> opts,
     GetConfigValue(isolate, opts, "perMessageDeflate", perMessageDeflate);
     GetConfigValue(isolate, opts, "maxPayload", maxPayload);
 
-    if (GetConfigValue(isolate, opts, "headers", v) >= 0)
-        headers->add(v);
+    result_t hr = GetConfigValue(isolate, opts, "headers", headers);
+    if (hr == CALL_E_PARAMNOTOPTIONAL)
+        headers = new Headers();
+    else if (hr < 0)
+        return hr;
 
     GetConfigValue(isolate, opts, "httpClient", hc);
 

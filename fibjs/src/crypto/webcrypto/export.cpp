@@ -33,9 +33,9 @@ result_t subtle_base::exportKey(exlib::string format, CryptoKey_base* key, Varia
 
     switch (keyType) {
     case KeyObject::kKeyTypePublic:
-        return ckey->m_key->ExportPublicKey(format, type, retVal);
+        return ckey->m_key->ExportPublicKey(format, type, retVal, true); // Use BackingStore for webcrypto
     case KeyObject::kKeyTypePrivate:
-        return ckey->m_key->ExportPrivateKey(format, type, "", nullptr, retVal);
+        return ckey->m_key->ExportPrivateKey(format, type, "", nullptr, retVal, true); // Use BackingStore for webcrypto
     }
 
     return Runtime::setError("Invalid key type");
@@ -48,7 +48,7 @@ result_t subtle_base::importKey(exlib::string format, v8::Local<v8::Value> keyDa
         Isolate* isolate = ac->isolate();
         result_t hr;
 
-        ac->m_ctx.resize(2);
+        ac->m_ctx.resize(3);
 
         obj_ptr<CryptoKey> key = new CryptoKey();
         hr = key->get_param(algorithm, extractable, usages);
@@ -71,7 +71,7 @@ result_t subtle_base::importKey(exlib::string format, v8::Local<v8::Value> keyDa
             hr = GetArgumentValue(isolate, keyData, buf);
             if (hr < 0)
                 return hr;
-            ac->m_ctx[1] = buf;
+            ac->m_ctx[2] = buf;
         }
 
         return CALL_E_NOSYNC;
@@ -91,7 +91,7 @@ result_t subtle_base::importKey(exlib::string format, v8::Local<v8::Value> keyDa
 
         return key->check_import_param();
     } else {
-        obj_ptr<Buffer_base> buf = (Buffer_base*)ac->m_ctx[1].object();
+        obj_ptr<Buffer_base> buf = (Buffer_base*)ac->m_ctx[2].object();
 
         if (format == "pkcs8")
             hr = key->m_key->ParsePrivateKey("der", format, "", nullptr, buf);
@@ -99,6 +99,8 @@ result_t subtle_base::importKey(exlib::string format, v8::Local<v8::Value> keyDa
             hr = key->m_key->ParsePublicKey("der", format, "", nullptr, buf);
         else if (key->m_key_type == kKeyNameECDSA && format == "raw")
             hr = key->m_key->ParsePublicKey(format, "", key->m_algorithm->get("namedCurve").string(), nullptr, buf);
+        else if (key->m_key_type == kKeyNameEd25519 && format == "raw")
+            hr = key->m_key->ParsePublicKey(format, "", "Ed25519", nullptr, buf);
         else
             return Runtime::setError("WebCrypto: unknown key format: " + format);
 
@@ -112,4 +114,22 @@ result_t subtle_base::importKey(exlib::string format, v8::Local<v8::Value> keyDa
 
     return Runtime::setError("WebCrypto: unknown key format: " + format);
 }
+
+result_t subtle_base::importKey(exlib::string format, v8::Local<v8::Value> keyData, exlib::string algorithm,
+    bool extractable, v8::Local<v8::Array> usages, obj_ptr<CryptoKey_base>& retVal, AsyncEvent* ac)
+{
+    if (ac->isSync()) {
+        Isolate* isolate = ac->isolate();
+
+        // Create temporary algorithm object and call the object overload
+        v8::Local<v8::Context> context = isolate->context();
+        v8::Local<v8::Object> algObj = v8::Object::New(isolate->m_isolate);
+        algObj->Set(context, isolate->NewString("name"), isolate->NewString(algorithm)).IsJust();
+
+        return importKey(format, keyData, algObj, extractable, usages, retVal, ac);
+    }
+
+    return importKey(format, keyData, v8::Local<v8::Object>(), extractable, usages, retVal, ac);
+}
+
 }

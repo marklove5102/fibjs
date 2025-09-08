@@ -34,8 +34,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<HeapSnapshot_base>& retVal)
@@ -93,7 +92,7 @@ inline void HeapSnapshot_base::s_diff(const v8::FunctionCallbackInfo<v8::Value>&
 
     ARG(obj_ptr<HeapSnapshot_base>, 0);
 
-    hr = pInst->diff(v0, vr);
+    hr = pInst->diff(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -117,7 +116,7 @@ inline void HeapSnapshot_base::s_getNodeById(const v8::FunctionCallbackInfo<v8::
 inline void HeapSnapshot_base::s_save(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(HeapSnapshot_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("HeapSnapshot.save");
 
     METHOD_OVER(1, 1);
 

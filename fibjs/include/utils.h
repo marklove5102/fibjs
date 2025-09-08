@@ -201,6 +201,8 @@ enum {
 #define V8_RETURN(v) (v)
 #endif
 
+#define METHOD_NAME(name) save_method_name _save_method_name(name)
+
 #define PROPERTY_ENTER()                                    \
     Isolate* isolate = Isolate::current(args.GetIsolate()); \
     V8_SCOPE(isolate->m_isolate);                           \
@@ -238,7 +240,8 @@ enum {
     do {                                                    \
         do {
 
-#define ASYNC_METHOD_ENTER()                                                                               \
+#define ASYNC_METHOD_ENTER(name)                                                                           \
+    METHOD_NAME(name);                                                                                     \
     Isolate* isolate = Isolate::current(args.GetIsolate());                                                \
     V8_SCOPE(isolate->m_isolate);                                                                          \
     result_t hr = CALL_E_BADPARAMCOUNT;                                                                    \
@@ -284,7 +287,7 @@ enum {
 
 #define LOAD_ENTER()                    \
     result_t hr = CALL_E_BADPARAMCOUNT; \
-    bool bStrict = false;               \
+    bool bStrict = true;                \
     int32_t argc1 = 1;                  \
     OptArgs args(v);                    \
     do {                                \
@@ -623,16 +626,6 @@ public:                                                                         
         return object_base::eventNames(retVal);                                               \
     }
 
-#define EVENT_FUNC(e)                                           \
-    virtual result_t get_on##e(v8::Local<v8::Function>& retVal) \
-    {                                                           \
-        return getListener(#e, retVal);                         \
-    }                                                           \
-    virtual result_t set_on##e(v8::Local<v8::Function> newVal)  \
-    {                                                           \
-        return setListener(#e, newVal);                         \
-    }
-
 #define FIBER_FREE()                                     \
 public:                                                  \
     virtual bool enterTask(exlib::Task_base* current)    \
@@ -671,7 +664,7 @@ public:                                                  \
 #endif
 
 #ifndef _offsetof
-#define _offsetof(TYPE, MEMBER) ((size_t) & ((TYPE*)0)->MEMBER)
+#define _offsetof(TYPE, MEMBER) ((size_t)&((TYPE*)0)->MEMBER)
 #endif
 
 #ifndef container_of
@@ -891,6 +884,8 @@ result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<T>& 
     vr = T::getInstance(v);
     if (vr)
         return 0;
+    if (bStrict)
+        return CALL_E_TYPEMISMATCH;
 
     return T::load(isolate, v, vr);
 }
@@ -913,8 +908,11 @@ inline bool IsJSObject(v8::Local<v8::Value> v)
     return true;
 }
 
-inline bool IsJSBuffer(v8::Local<v8::Value> v)
+inline bool IsJSBuffer(v8::Local<v8::Value> v, bool strict = true)
 {
+    if (!strict && (v->IsArrayBuffer() || v->IsArrayBufferView() || v->IsTypedArray()))
+        return true;
+
     if (!v->IsUint8Array())
         return false;
 
@@ -959,6 +957,22 @@ GET_JSVALUE(RegExp);
 inline result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, v8::Local<v8::Value>& vr, bool bStrict = false)
 {
     vr = v;
+    return 0;
+}
+
+inline result_t GetArgumentValue(Isolate* isolate, v8::Local<v8::Value> v, std::shared_ptr<v8::BackingStore>& vr, bool bStrict = false)
+{
+    if (v.IsEmpty())
+        return CALL_E_TYPEMISMATCH;
+
+    if (!v->IsArrayBuffer() && !v->IsArrayBufferView() && !v->IsTypedArray())
+        return CALL_E_TYPEMISMATCH;
+
+    v8::Local<v8::ArrayBuffer> ab = v8::Local<v8::ArrayBuffer>::Cast(v);
+    vr = ab->GetBackingStore();
+    if (vr == nullptr)
+        return CALL_E_TYPEMISMATCH;
+
     return 0;
 }
 
@@ -1019,6 +1033,9 @@ result_t setRuntimeError(result_t code, const char* err = nullptr);
 template <typename T>
 result_t GetConfigValue(Isolate* isolate, v8::Local<v8::Object> o, const char* key, T& n, bool bStrict = false)
 {
+    if (o.IsEmpty())
+        return setRuntimeError(CALL_E_PARAMNOTOPTIONAL, key);
+
     JSValue v = o->Get(isolate->context(), isolate->NewString(key));
     if (v->IsUndefined())
         return setRuntimeError(CALL_E_PARAMNOTOPTIONAL, key);
@@ -1029,6 +1046,9 @@ result_t GetConfigValue(Isolate* isolate, v8::Local<v8::Object> o, const char* k
 template <typename T>
 result_t GetConfigValue(Isolate* isolate, v8::Local<v8::Object> o, const char* key, std::optional<T>& n, bool bStrict = false)
 {
+    if (o.IsEmpty())
+        return CALL_E_PARAMNOTOPTIONAL;
+
     T n1;
     result_t hr = GetConfigValue(isolate, o, key, n1, bStrict);
     if (hr >= 0)
@@ -1042,8 +1062,10 @@ result_t GetConfigValue(Isolate* isolate, v8::Local<v8::Object> o, const char* k
 template <typename T>
 result_t GetConfigValue(Isolate* isolate, v8::Local<v8::Array> o, int32_t i, T& n, bool bStrict = false)
 {
-    JSValue v = o->Get(isolate->context(), i);
-    if (v->IsUndefined()) {
+    JSValue v;
+    if (!o.IsEmpty())
+        v = o->Get(isolate->context(), i);
+    if (v.IsEmpty() || v->IsUndefined()) {
         char key[32];
         snprintf(key, sizeof(key), "%d", i + 1);
         return setRuntimeError(CALL_E_PARAMNOTOPTIONAL, key);
@@ -1071,12 +1093,17 @@ inline v8::Local<v8::Value> GetReturnValue(Isolate* isolate, double v)
 
 inline v8::Local<v8::Value> GetReturnValue(Isolate* isolate, int64_t v)
 {
-    return v8::BigInt::New(isolate->m_isolate, v);
+    return v8::Number::New(isolate->m_isolate, (double)v);
 }
 
 inline v8::Local<v8::Value> GetReturnValue(Isolate* isolate, exlib::string& str)
 {
     return isolate->NewString(str);
+}
+
+inline v8::Local<v8::Value> GetReturnValue(Isolate* isolate, std::shared_ptr<v8::BackingStore>& store)
+{
+    return v8::ArrayBuffer::New(isolate->m_isolate, std::move(store));
 }
 
 // inline v8::Local<v8::Value> GetReturnValue(Isolate* isolate, std::string& str)
@@ -1253,6 +1280,7 @@ const char* signo_string(int signo);
 #ifdef _WIN32
 
 #define PATH_SLASH '\\'
+#define PATH_SLASH_STR "\\"
 #define PATH_DELIMITER ';'
 
 inline bool isPathSlash(char ch)
@@ -1263,6 +1291,7 @@ inline bool isPathSlash(char ch)
 #else
 
 #define PATH_SLASH '/'
+#define PATH_SLASH_STR "/"
 #define PATH_DELIMITER ':'
 
 inline bool isPathSlash(char ch)
@@ -1273,8 +1302,10 @@ inline bool isPathSlash(char ch)
 #endif
 
 #define PATH_SLASH_WIN32 '\\'
+#define PATH_SLASH_WIN32_STR "\\"
 #define PATH_DELIMITER_WIN32 ';'
 #define PATH_SLASH_POSIX '/'
+#define PATH_SLASH_POSIX_STR "/"
 #define PATH_DELIMITER_POSIX ':'
 
 inline bool isWin32PathSlash(char ch)
@@ -1406,6 +1437,16 @@ inline exlib::string clean_string(exlib::string s)
 {
     return clean_string(s.c_str(), s.length());
 }
+
+class save_method_name {
+public:
+    save_method_name(const char* name);
+    ~save_method_name();
+
+private:
+    JSFiber* m_fb;
+    const char* m_name;
+};
 
 inline bool is_big_endian()
 {

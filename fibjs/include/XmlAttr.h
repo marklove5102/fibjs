@@ -9,6 +9,7 @@
 
 #include "ifs/XmlAttr.h"
 #include "XmlNodeImpl.h"
+#include "qstring.h"
 
 namespace fibjs {
 
@@ -67,6 +68,7 @@ public:
     virtual result_t get_nodeName(exlib::string& retVal);
     virtual result_t get_nodeValue(exlib::string& retVal);
     virtual result_t set_nodeValue(exlib::string newVal);
+    virtual result_t cloneNode(obj_ptr<XmlAttr_base>& retVal);
 
 public:
     bool check(exlib::string namespaceURI, exlib::string localName)
@@ -74,10 +76,7 @@ public:
         return (m_namespaceURI == namespaceURI) && (m_localName == localName);
     }
 
-    bool check(exlib::string name)
-    {
-        return (m_name == name);
-    }
+    bool check(exlib::string name);
 
     bool check(const XmlAttr* from)
     {

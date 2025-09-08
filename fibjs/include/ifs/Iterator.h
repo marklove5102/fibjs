@@ -35,22 +35,21 @@ public:
         }
 
     public:
-        v8::Local<v8::Value> value;
+        Variant value;
         bool done;
     };
 
 public:
     // Iterator_base
     virtual result_t symbol_iterator(obj_ptr<Iterator_base>& retVal) = 0;
-    virtual result_t next(obj_ptr<NextType>& retVal) = 0;
+    virtual result_t next(obj_ptr<NextType>& retVal, AsyncEvent* ac) = 0;
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Iterator_base>& retVal)
@@ -59,6 +58,9 @@ public:
 public:
     static void s_symbol_iterator(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_next(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+public:
+    ASYNC_MEMBERVALUE1(Iterator_base, next, obj_ptr<NextType>);
 };
 }
 
@@ -67,14 +69,14 @@ inline ClassInfo& Iterator_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
         { "@iterator", s_symbol_iterator, false, ClassData::ASYNC_SYNC },
-        { "next", s_next, false, ClassData::ASYNC_SYNC }
+        { "next", s_next, false, ClassData::ASYNC_ASYNC }
     };
 
     static ClassData s_cd = {
         "Iterator", false, s__new, NULL,
         ARRAYSIZE(s_method), s_method, 0, NULL, 0, NULL, 0, NULL, NULL, NULL,
         &object_base::class_info(),
-        false
+        true
     };
 
     static ClassInfo s_ci(s_cd);
@@ -99,12 +101,15 @@ inline void Iterator_base::s_next(const v8::FunctionCallbackInfo<v8::Value>& arg
 {
     obj_ptr<NextType> vr;
 
-    METHOD_INSTANCE(Iterator_base);
-    METHOD_ENTER();
+    ASYNC_METHOD_INSTANCE(Iterator_base);
+    ASYNC_METHOD_ENTER("Iterator.next");
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->next(vr);
+    if (!cb.IsEmpty())
+        hr = pInst->acb_next(cb, args);
+    else
+        hr = pInst->ac_next(vr);
 
     METHOD_RETURN();
 }

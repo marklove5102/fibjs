@@ -21,8 +21,6 @@ public:
     RTCDataChannel(Isolate* isolate, const std::shared_ptr<rtc::DataChannel>& dataChannel, bool opened);
     ~RTCDataChannel();
 
-    EVENT_SUPPORT();
-
 public:
     // RTCDataChannel_base
     virtual result_t send(Buffer_base* data);
@@ -32,13 +30,6 @@ public:
     virtual result_t get_label(exlib::string& retVal);
     virtual result_t get_protocol(exlib::string& retVal);
     virtual result_t get_bufferedAmount(double& retVal);
-
-public:
-    EVENT_FUNC(open);
-    EVENT_FUNC(message);
-    EVENT_FUNC(close);
-    EVENT_FUNC(error);
-    EVENT_FUNC(bufferedamountlow);
 
 public:
     virtual result_t onEventChange(exlib::string type, exlib::string ev, v8::Local<v8::Function> func)

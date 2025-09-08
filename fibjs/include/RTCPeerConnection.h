@@ -22,8 +22,6 @@ class RTCPeerConnection : public RTCPeerConnection_base {
 public:
     ~RTCPeerConnection();
 
-    EVENT_SUPPORT();
-
 public:
     // RTCPeerConnection_base
     virtual result_t createDataChannel(exlib::string label, v8::Local<v8::Object> options, obj_ptr<RTCDataChannel_base>& retVal);
@@ -42,16 +40,6 @@ public:
     virtual result_t get_remoteDescription(v8::Local<v8::Object>& retVal);
     virtual result_t get_remoteFingerprint(v8::Local<v8::Object>& retVal);
     virtual result_t get_signalingState(exlib::string& retVal);
-
-public:
-    EVENT_FUNC(connectionstatechange);
-    EVENT_FUNC(datachannel);
-    EVENT_FUNC(icecandidate);
-    EVENT_FUNC(iceconnectionstatechange);
-    EVENT_FUNC(icegatheringstatechange);
-    EVENT_FUNC(localdescription);
-    EVENT_FUNC(signalingstatechange);
-    EVENT_FUNC(track);
 
 public:
     result_t create(v8::Local<v8::Object> options);

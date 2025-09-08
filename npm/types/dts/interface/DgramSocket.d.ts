@@ -11,27 +11,6 @@
  * var dgram = require('dgram');
  * var sock = dgram.createSocket('udp4');
  * ```
- * 
- * ## 事件
- *  DgramSocket 继承于 EventEmitter，对象的状态变化，以及数据接受，都是以事件的方式实现。
- * 
- *  ### close 事件
- *  ** `close` 事件将在使用 `close()` 关闭一个 `socket` 之后触发。该事件一旦触发，这个 `socket` 上将不会触发新的 `message` 事件。**
- * 
- *  ### error 事件
- *  ** 当有任何错误发生时，`error` 事件将被触发。 **
- * 
- *  ### listening 事件
- *  ** 当一个 `socket` 开始监听数据包信息时，`listening` 事件将被触发。该事件会在创建 UDP socket 之后被立即触发。 **
- * 
- *  ### message 事件
- *  ** 当有新的数据包被 `socket` 接收时，`message` 事件会被触发。`msg` 和 `rinfo` 会作为参数传递到该事件的处理函数中。 **
- *  - msg: Buffer，消息
- *  - rinfo: Object，远程地址信息
- *     - address: string，发送方地址
- *     - family: string，地址类型 ('IPv4' or 'IPv6')
- *     - port: number，发送者端口
- *     - size: number，消息大小
  *  
  */
 declare class Class_DgramSocket extends Class_EventEmitter {
@@ -43,7 +22,7 @@ declare class Class_DgramSocket extends Class_EventEmitter {
      */
     bind(port?: number, addr?: string): void;
 
-    bind(port?: number, addr?: string, callback?: (err: Error | undefined | null)=>any): void;
+    bind(port?: number, addr?: string, callback: (err: Error | undefined | null)=>any): void;
 
     /**
      * @description 该方法会令 dgram.Socket 在 `opts` 指定的 `port` 和 `address` 上监听数据包信息。绑定完成时会触发一个 `listening` 事件。
@@ -64,7 +43,7 @@ declare class Class_DgramSocket extends Class_EventEmitter {
      */
     send(msg: Class_Buffer, port: number, address?: string): number;
 
-    send(msg: Class_Buffer, port: number, address?: string, callback?: (err: Error | undefined | null, retVal: number)=>any): void;
+    send(msg: Class_Buffer, port: number, address?: string, callback: (err: Error | undefined | null, retVal: number)=>any): void;
 
     /**
      * @description 在 socket 上发送一个数据包
@@ -78,7 +57,7 @@ declare class Class_DgramSocket extends Class_EventEmitter {
      */
     send(msg: Class_Buffer, offset: number, length: number, port: number, address?: string): number;
 
-    send(msg: Class_Buffer, offset: number, length: number, port: number, address?: string, callback?: (err: Error | undefined | null, retVal: number)=>any): void;
+    send(msg: Class_Buffer, offset: number, length: number, port: number, address?: string, callback: (err: Error | undefined | null, retVal: number)=>any): void;
 
     /**
      * @description 返回一个包含 socket 地址信息的对象。对于 UDP socket，该对象将包含 address、family 和 port 属性。 
@@ -156,6 +135,29 @@ declare class Class_DgramSocket extends Class_EventEmitter {
      *     
      */
     setBroadcast(flag: boolean): void;
+
+    /**
+     * @description `close` 事件将在使用 `close()` 关闭一个 `socket` 之后触发。该事件一旦触发，这个 `socket` 上将不会触发新的 `message` 事件 
+     */
+    on(event: "close", listener: ()=>void): this;
+
+    /**
+     * @description 当有任何错误发生时，`error` 事件将被触发 
+     */
+    on(event: "error", listener: ()=>void): this;
+
+    /**
+     * @description 当一个 `socket` 开始监听数据包信息时，`listening` 事件将被触发。该事件会在创建 UDP socket 之后被立即触发 
+     */
+    on(event: "listening", listener: ()=>void): this;
+
+    /**
+     * @description 当有新的数据包被 `socket` 接收时，`message` 事件会被触发。`msg` 和 `rinfo` 会作为参数传递到该事件的处理函数中。
+     *      @param msg 接收到的数据包
+     *      @param rinfo 包含接收数据包的远程信息的对象。该对象包含 `address`、`port` 和 `family` 属性，分别表示远程地址、端口和协议族。
+     *     
+     */
+    on(event: "message", listener: ()=>void): this;
 
     /**
      * @description 维持 fibjs 进程不退出，在对象绑定期间阻止 fibjs 进程退出

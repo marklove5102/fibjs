@@ -41,8 +41,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<ZipFile_base>& retVal)
@@ -109,7 +108,7 @@ inline void ZipFile_base::s_namelist(const v8::FunctionCallbackInfo<v8::Value>& 
     obj_ptr<NArray> vr;
 
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.namelist");
 
     METHOD_OVER(0, 0);
 
@@ -126,7 +125,7 @@ inline void ZipFile_base::s_infolist(const v8::FunctionCallbackInfo<v8::Value>& 
     obj_ptr<NArray> vr;
 
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.infolist");
 
     METHOD_OVER(0, 0);
 
@@ -143,7 +142,7 @@ inline void ZipFile_base::s_getinfo(const v8::FunctionCallbackInfo<v8::Value>& a
     obj_ptr<NObject> vr;
 
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.getinfo");
 
     METHOD_OVER(1, 1);
 
@@ -162,7 +161,7 @@ inline void ZipFile_base::s_read(const v8::FunctionCallbackInfo<v8::Value>& args
     obj_ptr<Buffer_base> vr;
 
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.read");
 
     METHOD_OVER(2, 1);
 
@@ -182,7 +181,7 @@ inline void ZipFile_base::s_readAll(const v8::FunctionCallbackInfo<v8::Value>& a
     obj_ptr<NArray> vr;
 
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.readAll");
 
     METHOD_OVER(1, 0);
 
@@ -199,7 +198,7 @@ inline void ZipFile_base::s_readAll(const v8::FunctionCallbackInfo<v8::Value>& a
 inline void ZipFile_base::s_extract(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.extract");
 
     METHOD_OVER(3, 2);
 
@@ -219,9 +218,9 @@ inline void ZipFile_base::s_extract(const v8::FunctionCallbackInfo<v8::Value>& a
     OPT_ARG(exlib::string, 2, "");
 
     if (!cb.IsEmpty())
-        hr = pInst->acb_extract(v0, v1, v2, cb, args);
+        hr = pInst->acb_extract(v0, v1.get(), v2, cb, args);
     else
-        hr = pInst->ac_extract(v0, v1, v2);
+        hr = pInst->ac_extract(v0, v1.get(), v2);
 
     METHOD_VOID();
 }
@@ -229,7 +228,7 @@ inline void ZipFile_base::s_extract(const v8::FunctionCallbackInfo<v8::Value>& a
 inline void ZipFile_base::s_extractAll(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.extractAll");
 
     METHOD_OVER(2, 1);
 
@@ -247,7 +246,7 @@ inline void ZipFile_base::s_extractAll(const v8::FunctionCallbackInfo<v8::Value>
 inline void ZipFile_base::s_write(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.write");
 
     METHOD_OVER(3, 2);
 
@@ -267,9 +266,9 @@ inline void ZipFile_base::s_write(const v8::FunctionCallbackInfo<v8::Value>& arg
     OPT_ARG(exlib::string, 2, "");
 
     if (!cb.IsEmpty())
-        hr = pInst->acb_write(v0, v1, v2, cb, args);
+        hr = pInst->acb_write(v0.get(), v1, v2, cb, args);
     else
-        hr = pInst->ac_write(v0, v1, v2);
+        hr = pInst->ac_write(v0.get(), v1, v2);
 
     METHOD_OVER(3, 2);
 
@@ -278,9 +277,9 @@ inline void ZipFile_base::s_write(const v8::FunctionCallbackInfo<v8::Value>& arg
     OPT_ARG(exlib::string, 2, "");
 
     if (!cb.IsEmpty())
-        hr = pInst->acb_write(v0, v1, v2, cb, args);
+        hr = pInst->acb_write(v0.get(), v1, v2, cb, args);
     else
-        hr = pInst->ac_write(v0, v1, v2);
+        hr = pInst->ac_write(v0.get(), v1, v2);
 
     METHOD_VOID();
 }
@@ -288,7 +287,7 @@ inline void ZipFile_base::s_write(const v8::FunctionCallbackInfo<v8::Value>& arg
 inline void ZipFile_base::s_close(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     ASYNC_METHOD_INSTANCE(ZipFile_base);
-    ASYNC_METHOD_ENTER();
+    ASYNC_METHOD_ENTER("ZipFile.close");
 
     METHOD_OVER(0, 0);
 

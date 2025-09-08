@@ -34,6 +34,7 @@ declare class Class_EventSource extends Class_EventEmitter {
      *          "pack": {},
      *          "headers": {}
      *      }
+     *      ```
      * 
      *       @param url 服务器地址
      *       @param options 选项
@@ -47,6 +48,27 @@ declare class Class_EventSource extends Class_EventEmitter {
     close(): void;
 
     close(callback: (err: Error | undefined | null)=>any): void;
+
+    /**
+     * @description 发送事件到客户端
+     * 
+     *      options 包含请求的附加选项，支持的内容如下：
+     *      ```JavaScript
+     *      {
+     *          "event": "message", // 指定事件类型，默认为 message
+     *          "id": "", // 事件 ID
+     *          "retry": 0 // 重试时间间隔，单位为毫秒
+     *      }
+     *      ```
+     * 
+     *      @param data 事件数据
+     *      @param options 选项
+     *      @return 返回发送的字节数
+     *     
+     */
+    send(data: string, options?: FIBJS.GeneralObject): number;
+
+    send(data: string, options?: FIBJS.GeneralObject, callback: (err: Error | undefined | null, retVal: number)=>any): void;
 
     /**
      * @description 事件源状态，取值为 CONNECTING、OPEN、CLOSED 
@@ -71,25 +93,22 @@ declare class Class_EventSource extends Class_EventEmitter {
     /**
      * @description 打开事件回调 
      */
-    onopen: (...args: any[])=>any;
+    on(event: "open", listener: ()=>void): this;
 
     /**
      * @description 错误事件回调 
      */
-    onerror: (...args: any[])=>any;
+    on(event: "error", listener: ()=>void): this;
 
     /**
      * @description 消息事件回调 
      */
-    onmessage: (...args: any[])=>any;
+    on(event: "message", listener: ()=>void): this;
 
     /**
      * @description 关闭事件回调 
      */
-    onclose: (...args: any[])=>any;
-
-
-
+    on(event: "close", listener: ()=>void): this;
 
 }
 

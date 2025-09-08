@@ -16,9 +16,7 @@ declare module 'subtle' {
      *     @return 返回计算得到的哈希值
      *     
      */
-    function digest(algorithm: string, data: Class_Buffer): Class_Buffer;
-
-    function digest(algorithm: string, data: Class_Buffer, callback: (err: Error | undefined | null, retVal: Class_Buffer)=>any): void;
+    function digest(algorithm: string, data: Class_Buffer): Promise<ArrayBuffer>;
 
     /**
      * @description 计算给定数据的哈希值
@@ -35,9 +33,7 @@ declare module 'subtle' {
      *     @return 返回计算得到的哈希值
      *     
      */
-    function digest(algorithm: FIBJS.GeneralObject, data: Class_Buffer): Class_Buffer;
-
-    function digest(algorithm: FIBJS.GeneralObject, data: Class_Buffer, callback: (err: Error | undefined | null, retVal: Class_Buffer)=>any): void;
+    function digest(algorithm: FIBJS.GeneralObject, data: Class_Buffer): Promise<ArrayBuffer>;
 
     /**
      * @description 导出 key 的信息，如果 key 不可导出，则返回一个错误
@@ -47,9 +43,7 @@ declare module 'subtle' {
      *     @return 返回导出的 key 信息
      *     
      */
-    function exportKey(format: string, key: Class_CryptoKey): any;
-
-    function exportKey(format: string, key: Class_CryptoKey, callback: (err: Error | undefined | null, retVal: any)=>any): void;
+    function exportKey(format: string, key: Class_CryptoKey): Promise<any>;
 
     /**
      * @description 生成一个新的 key
@@ -60,9 +54,18 @@ declare module 'subtle' {
      *     @return 返回生成的 key
      *     
      */
-    function generateKey(algorithm: FIBJS.GeneralObject, extractable: boolean, usages: any[]): any;
+    function generateKey(algorithm: string, extractable: boolean, usages: any[]): Promise<any>;
 
-    function generateKey(algorithm: FIBJS.GeneralObject, extractable: boolean, usages: any[], callback: (err: Error | undefined | null, retVal: any)=>any): void;
+    /**
+     * @description 生成一个新的 key
+     * 
+     *     @param algorithm 指定生成 key 的算法
+     *     @param extractable 指定 key 是否可以导出到外部
+     *     @param usages 指定 key 的用途
+     *     @return 返回生成的 key
+     *     
+     */
+    function generateKey(algorithm: FIBJS.GeneralObject, extractable: boolean, usages: any[]): Promise<any>;
 
     /**
      * @description 导入 key
@@ -75,9 +78,20 @@ declare module 'subtle' {
      *     @return 返回导入的 key
      *     
      */
-    function importKey(format: string, keyData: any, algorithm: FIBJS.GeneralObject, extractable: boolean, usages: any[]): Class_CryptoKey;
+    function importKey(format: string, keyData: any, algorithm: string, extractable: boolean, usages: any[]): Promise<Class_CryptoKey>;
 
-    function importKey(format: string, keyData: any, algorithm: FIBJS.GeneralObject, extractable: boolean, usages: any[], callback: (err: Error | undefined | null, retVal: Class_CryptoKey)=>any): void;
+    /**
+     * @description 导入 key
+     * 
+     *     @param format 导入的格式，可以是 'raw'，'pkcs8'，'spki' 或 'jwk'.
+     *     @param keyData 包含 key 数据的对象
+     *     @param algorithm 指定 key 的算法
+     *     @param extractable 指定 key 是否可以导出到外部
+     *     @param usages 指定 key 的用途
+     *     @return 返回导入的 key
+     *     
+     */
+    function importKey(format: string, keyData: any, algorithm: FIBJS.GeneralObject, extractable: boolean, usages: any[]): Promise<Class_CryptoKey>;
 
     /**
      * @description 使用 key 对数据进行签名
@@ -88,9 +102,18 @@ declare module 'subtle' {
      *     @return 返回签名后的数据
      *     
      */
-    function sign(algorithm: FIBJS.GeneralObject, key: Class_CryptoKey, data: Class_Buffer): Class_Buffer;
+    function sign(algorithm: string, key: Class_CryptoKey, data: Class_Buffer): Promise<Class_Buffer>;
 
-    function sign(algorithm: FIBJS.GeneralObject, key: Class_CryptoKey, data: Class_Buffer, callback: (err: Error | undefined | null, retVal: Class_Buffer)=>any): void;
+    /**
+     * @description 使用 key 对数据进行签名
+     * 
+     *     @param algorithm 指定签名算法
+     *     @param key 指定用于签名的 key
+     *     @param data 指定要签名的数据
+     *     @return 返回签名后的数据
+     *     
+     */
+    function sign(algorithm: FIBJS.GeneralObject, key: Class_CryptoKey, data: Class_Buffer): Promise<Class_Buffer>;
 
     /**
      * @description 使用 key 对数据进行验签
@@ -102,9 +125,19 @@ declare module 'subtle' {
      *     @return 返回验签结果
      *     
      */
-    function verify(algorithm: FIBJS.GeneralObject, key: Class_CryptoKey, signature: Class_Buffer, data: Class_Buffer): boolean;
+    function verify(algorithm: string, key: Class_CryptoKey, signature: Class_Buffer, data: Class_Buffer): Promise<boolean>;
 
-    function verify(algorithm: FIBJS.GeneralObject, key: Class_CryptoKey, signature: Class_Buffer, data: Class_Buffer, callback: (err: Error | undefined | null, retVal: boolean)=>any): void;
+    /**
+     * @description 使用 key 对数据进行验签
+     * 
+     *     @param algorithm 指定签名算法
+     *     @param key 指定用于验签的 key
+     *     @param signature 指定签名数据
+     *     @param data 指定要验签的数据
+     *     @return 返回验签结果
+     *     
+     */
+    function verify(algorithm: FIBJS.GeneralObject, key: Class_CryptoKey, signature: Class_Buffer, data: Class_Buffer): Promise<boolean>;
 
 }
 

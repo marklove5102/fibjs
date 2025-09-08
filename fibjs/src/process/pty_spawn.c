@@ -8,6 +8,8 @@
 #ifndef _WIN32
 
 #include <sys/wait.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #if defined(__APPLE__)
 #include <util.h>
 #else
@@ -51,34 +53,35 @@ int uv__close(int fd); /* preserves errno */
 int uv__close_nocheckstdio(int fd);
 int uv__make_pipe(int fds[2], int flags);
 
-int uv__cloexec_fcntl(int fd, int set) {
-  int flags;
-  int r;
+int uv__cloexec_fcntl(int fd, int set)
+{
+    int flags;
+    int r;
 
-  do
-    r = fcntl(fd, F_GETFD);
-  while (r == -1 && errno == EINTR);
+    do
+        r = fcntl(fd, F_GETFD);
+    while (r == -1 && errno == EINTR);
 
-  if (r == -1)
-    return UV__ERR(errno);
+    if (r == -1)
+        return UV__ERR(errno);
 
-  /* Bail out now if already set/clear. */
-  if (!!(r & FD_CLOEXEC) == !!set)
+    /* Bail out now if already set/clear. */
+    if (!!(r & FD_CLOEXEC) == !!set)
+        return 0;
+
+    if (set)
+        flags = r | FD_CLOEXEC;
+    else
+        flags = r & ~FD_CLOEXEC;
+
+    do
+        r = fcntl(fd, F_SETFD, flags);
+    while (r == -1 && errno == EINTR);
+
+    if (r)
+        return UV__ERR(errno);
+
     return 0;
-
-  if (set)
-    flags = r | FD_CLOEXEC;
-  else
-    flags = r & ~FD_CLOEXEC;
-
-  do
-    r = fcntl(fd, F_SETFD, flags);
-  while (r == -1 && errno == EINTR);
-
-  if (r)
-    return UV__ERR(errno);
-
-  return 0;
 }
 
 static void uv__chld(uv_signal_t* handle, int signum)
@@ -212,12 +215,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
 
     if (options->flags & (UV_PROCESS_SETUID | UV_PROCESS_SETGID)) {
         /* When dropping privileges from root, the `setgroups` call will
-     * remove any extraneous groups. If we don't call this, then
-     * even though our uid has dropped, we may still have groups
-     * that enable us to do super-user things. This will fail if we
-     * aren't root, so don't bother checking the return value, this
-     * is just done as an optimistic privilege dropping function.
-     */
+         * remove any extraneous groups. If we don't call this, then
+         * even though our uid has dropped, we may still have groups
+         * that enable us to do super-user things. This will fail if we
+         * aren't root, so don't bother checking the return value, this
+         * is just done as an optimistic privilege dropping function.
+         */
         SAVE_ERRNO(setgroups(0, NULL));
     }
 
@@ -236,10 +239,10 @@ static void uv__process_child_init(const uv_process_options_t* options,
     }
 
     /* Reset signal disposition.  Use a hard-coded limit because NSIG
-   * is not fixed on Linux: it's either 32, 34 or 64, depending on
-   * whether RT signals are enabled.  We are not allowed to touch
-   * RT signal handlers, glibc uses them internally.
-   */
+     * is not fixed on Linux: it's either 32, 34 or 64, depending on
+     * whether RT signals are enabled.  We are not allowed to touch
+     * RT signal handlers, glibc uses them internally.
+     */
     for (n = 1; n < 32; n += 1) {
         if (n == SIGKILL || n == SIGSTOP)
             continue; /* Can't be changed. */
@@ -270,11 +273,42 @@ static void uv__process_child_init(const uv_process_options_t* options,
     _exit(127);
 }
 
-int pty_spawn(uv_loop_t* loop, uv_process_t* process, const uv_process_options_t* options, int* terminalfd)
+static int pty_resize_fd(int fd, int cols, int rows)
+{
+    struct winsize winsize;
+
+    if (fd < 0 || cols <= 0 || rows <= 0)
+        return -1;
+
+    winsize.ws_col = cols;
+    winsize.ws_row = rows;
+    winsize.ws_xpixel = 0;
+    winsize.ws_ypixel = 0;
+
+    return ioctl(fd, TIOCSWINSZ, &winsize);
+}
+
+int pty_resize(uv_process_t* process, int cols, int rows)
+{
+    // On POSIX systems, resize is handled directly in ChildProcess::resize
+    // This function is kept for interface compatibility
+    (void)process;
+    (void)cols;
+    (void)rows;
+    return 0;
+}
+
+void pty_cleanup(uv_process_t* process)
+{
+    // On POSIX systems, no special cleanup is needed for PTY
+    (void)process;
+}
+
+int pty_spawn(uv_loop_t* loop, uv_process_t* process, const uv_process_options_t* options, int* stdinfd, int* stdoutfd, int cols, int rows)
 {
     int signal_pipe[2] = { -1, -1 };
     int pipes_storage[8][2];
-    int(*pipes)[2];
+    int (*pipes)[2];
     int stdio_count;
     ssize_t r;
     pid_t pid;
@@ -282,6 +316,7 @@ int pty_spawn(uv_loop_t* loop, uv_process_t* process, const uv_process_options_t
     int exec_errorno;
     int i;
     int status;
+    int masterfd;
 
     uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
     QUEUE_INIT(&process->queue);
@@ -306,9 +341,8 @@ int pty_spawn(uv_loop_t* loop, uv_process_t* process, const uv_process_options_t
 
     /* Acquire write lock to prevent opening new fds in worker threads */
     uv_rwlock_wrlock(&loop->cloexec_lock);
-    // pid = fork();
 
-    pid = forkpty(terminalfd, NULL, NULL, NULL);
+    pid = forkpty(&masterfd, NULL, NULL, NULL);
 
     if (pid == -1) {
         err = UV__ERR(errno);
@@ -322,6 +356,32 @@ int pty_spawn(uv_loop_t* loop, uv_process_t* process, const uv_process_options_t
         uv__process_child_init(options, stdio_count, pipes, signal_pipe[1]);
         abort();
     }
+
+    /* Create separate fds for stdin (write) and stdout (read) */
+    /* Both point to the same PTY master, but will be used differently */
+    *stdinfd = dup(masterfd); // For writing to child's stdin
+    *stdoutfd = dup(masterfd); // For reading from child's stdout
+
+    if (*stdinfd == -1 || *stdoutfd == -1) {
+        err = UV__ERR(errno);
+        if (*stdinfd != -1)
+            uv__close(*stdinfd);
+        if (*stdoutfd != -1)
+            uv__close(*stdoutfd);
+        uv__close(masterfd);
+        uv_rwlock_wrunlock(&loop->cloexec_lock);
+        uv__close(signal_pipe[0]);
+        uv__close(signal_pipe[1]);
+        return err;
+    }
+
+    /* Set initial terminal size if specified */
+    if (cols > 0 && rows > 0) {
+        pty_resize_fd(masterfd, cols, rows);
+    }
+
+    /* Close the original masterfd as we now have separate fds */
+    uv__close(masterfd);
 
     /* Release lock in parent process */
     uv_rwlock_wrunlock(&loop->cloexec_lock);

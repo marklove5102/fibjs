@@ -9,7 +9,7 @@
 #include "ifs/zip.h"
 #include "path.h"
 #include "Stat.h"
-#include "File.h"
+#include "FileStream.h"
 #include "MemoryStream.h"
 #include "ZipFile.h"
 #include "AsyncUV.h"
@@ -128,7 +128,7 @@ result_t fs_base::clearZipFS(exlib::string fname)
 static result_t resolve_zip_file(exlib::string fname, obj_ptr<ZipFile::Info>& retVal, AsyncEvent* ac)
 {
     size_t pos = fname.find('$');
-    if (pos != exlib::string::npos && fname.c_str()[pos + 1] == PATH_SLASH) {
+    if (pos != exlib::string::npos && fname[pos + 1] == PATH_SLASH) {
         exlib::string zip_file = fname.substr(0, pos);
         exlib::string member = fname.substr(pos + 2);
         obj_ptr<ZipFile_base> zfile;
@@ -335,7 +335,7 @@ result_t fs_base::openFile(exlib::string fname, exlib::string flags,
     if (!ac->isolate()->m_enable_FileSystem)
         return CHECK_ERROR(CALL_E_INVALID_CALL);
 
-    obj_ptr<File> pFile = new File();
+    obj_ptr<FileStream> pFile = new FileStream();
     hr = pFile->open(safe_name, flags);
     if (hr < 0)
         return hr;

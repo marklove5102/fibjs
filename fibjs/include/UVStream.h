@@ -10,13 +10,16 @@
 #include "ifs/io.h"
 #include "AsyncUV.h"
 #include "Buffer.h"
+#include "AsyncStream.h"
+#include "options.h"
+#include "ifs/console.h"
 
 #define STREAM_BLOCK_SIZE 2048
 
 namespace fibjs {
 
 template <typename T>
-class UVStream_tmpl : public T {
+class UVStream_tmpl : public AsyncStream<T> {
 public:
     class UVTimeout : public uv_timer_t {
     public:
@@ -181,6 +184,12 @@ public:
                         m_buf.resize(m_pos);
 
                     m_retVal = new Buffer(m_buf.c_str(), m_buf.length());
+
+                    // Add pipedump output for named pipe read
+                    if (g_pipedump && m_this->m_handle.type == UV_NAMED_PIPE) {
+                        outLog(console_base::C_NOTICE, clean_string(m_buf.c_str(), m_buf.length()));
+                    }
+
                     m_ac->apost(0);
                 } else
                     m_ac->apost(CALL_RETURN_NULL);
@@ -210,6 +219,11 @@ public:
             m_data = Buffer::Cast(data);
             m_buf.base = (char*)m_data->data();
             m_buf.len = (uint32_t)m_data->length();
+
+            // Add pipedump output for named pipe write
+            if (g_pipedump && pThis->m_handle.type == UV_NAMED_PIPE) {
+                outLog(console_base::C_WARN, clean_string((char*)m_data->data(), m_data->length()));
+            }
         }
 
     public:
@@ -289,11 +303,12 @@ public:
         return CALL_E_PENDDING;
     }
 
-    virtual result_t write(Buffer_base* data, AsyncEvent* ac)
+    virtual result_t write(Buffer_base* data, int32_t& retVal, AsyncEvent* ac)
     {
         if (ac->isSync())
             return CHECK_ERROR(CALL_E_NOSYNC);
 
+        retVal = Buffer::Cast(data)->length();
         uv_post(new AsyncWrite(this, data, ac));
         return CALL_E_PENDDING;
     }
@@ -386,10 +401,29 @@ public:
         });
     }
 
-public:
-    static result_t create_pipe(obj_ptr<UVStream>& retVal, int32_t ipc = 0)
+    ~UVStream()
     {
-        obj_ptr<UVStream> stream = new UVStream();
+        if (m_on_close)
+            m_on_close(m_fd);
+    }
+
+public:
+    virtual result_t onEventEmit(exlib::string ev)
+    {
+        if (ev == "close") {
+            if (m_on_close) {
+                m_on_close(m_fd);
+                m_on_close = nullptr;
+            }
+        }
+
+        return 0;
+    }
+
+public:
+    static result_t create_pipe(obj_ptr<UVStream>& retVal, int32_t ipc, std::function<void(int32_t)> onClose)
+    {
+        obj_ptr<UVStream> stream = new UVStream(onClose);
         result_t hr = uv_call([&] {
             return uv_pipe_init(s_uv_loop, &stream->m_pipe, ipc);
         });
@@ -401,9 +435,9 @@ public:
         return 0;
     }
 
-    static result_t uv_pipe(obj_ptr<UVStream>& retVal, int32_t fd)
+    static result_t uv_pipe(obj_ptr<UVStream>& retVal, int32_t fd, std::function<void(int32_t)> onClose)
     {
-        obj_ptr<UVStream> stream = new UVStream();
+        obj_ptr<UVStream> stream = new UVStream(onClose);
         uv_pipe_init(s_uv_loop, &stream->m_pipe, 0);
         int ret = uv_pipe_open(&stream->m_pipe, fd);
         if (ret < 0)
@@ -415,8 +449,12 @@ public:
     }
 
 private:
-    UVStream()
+    UVStream(std::function<void(int32_t)> onClose)
+        : m_on_close(onClose)
     {
     }
+
+private:
+    std::function<void(int32_t)> m_on_close;
 };
 }

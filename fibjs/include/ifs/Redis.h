@@ -69,8 +69,6 @@ public:
     virtual result_t unpsub(exlib::string pattern, v8::Local<v8::Function> func) = 0;
     virtual result_t unpsub(v8::Local<v8::Array> patterns) = 0;
     virtual result_t unpsub(v8::Local<v8::Object> map) = 0;
-    virtual result_t get_onsuberror(v8::Local<v8::Function>& retVal) = 0;
-    virtual result_t set_onsuberror(v8::Local<v8::Function> newVal) = 0;
     virtual result_t pub(Buffer_base* channel, Buffer_base* message, int32_t& retVal) = 0;
     virtual result_t getHash(Buffer_base* key, obj_ptr<RedisHash_base>& retVal) = 0;
     virtual result_t getList(Buffer_base* key, obj_ptr<RedisList_base>& retVal) = 0;
@@ -85,8 +83,7 @@ public:
     {
         CONSTRUCT_INIT();
 
-        isolate->m_isolate->ThrowException(
-            isolate->NewString("not a constructor"));
+        ThrowTypeError("not a constructor");
     }
 
     static result_t load(Isolate* isolate, v8::Local<v8::Value> v, obj_ptr<Redis_base>& retVal)
@@ -231,7 +228,7 @@ inline void Redis_base::s_set(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(obj_ptr<Buffer_base>, 1);
     OPT_ARG(int64_t, 2, 0);
 
-    hr = pInst->set(v0, v1, v2);
+    hr = pInst->set(v0.get(), v1.get(), v2);
 
     METHOD_VOID();
 }
@@ -247,7 +244,7 @@ inline void Redis_base::s_setNX(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(obj_ptr<Buffer_base>, 1);
     OPT_ARG(int64_t, 2, 0);
 
-    hr = pInst->setNX(v0, v1, v2);
+    hr = pInst->setNX(v0.get(), v1.get(), v2);
 
     METHOD_VOID();
 }
@@ -263,7 +260,7 @@ inline void Redis_base::s_setXX(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(obj_ptr<Buffer_base>, 1);
     OPT_ARG(int64_t, 2, 0);
 
-    hr = pInst->setXX(v0, v1, v2);
+    hr = pInst->setXX(v0.get(), v1.get(), v2);
 
     METHOD_VOID();
 }
@@ -320,7 +317,7 @@ inline void Redis_base::s_append(const v8::FunctionCallbackInfo<v8::Value>& args
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = pInst->append(v0, v1, vr);
+    hr = pInst->append(v0.get(), v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -338,7 +335,7 @@ inline void Redis_base::s_setRange(const v8::FunctionCallbackInfo<v8::Value>& ar
     ARG(int32_t, 1);
     ARG(obj_ptr<Buffer_base>, 2);
 
-    hr = pInst->setRange(v0, v1, v2, vr);
+    hr = pInst->setRange(v0.get(), v1, v2.get(), vr);
 
     METHOD_RETURN();
 }
@@ -356,7 +353,7 @@ inline void Redis_base::s_getRange(const v8::FunctionCallbackInfo<v8::Value>& ar
     ARG(int32_t, 1);
     ARG(int32_t, 2);
 
-    hr = pInst->getRange(v0, v1, v2, vr);
+    hr = pInst->getRange(v0.get(), v1, v2, vr);
 
     METHOD_RETURN();
 }
@@ -372,7 +369,7 @@ inline void Redis_base::s_strlen(const v8::FunctionCallbackInfo<v8::Value>& args
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->strlen(v0, vr);
+    hr = pInst->strlen(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -390,7 +387,7 @@ inline void Redis_base::s_bitcount(const v8::FunctionCallbackInfo<v8::Value>& ar
     OPT_ARG(int32_t, 1, 0);
     OPT_ARG(int32_t, 2, -1);
 
-    hr = pInst->bitcount(v0, v1, v2, vr);
+    hr = pInst->bitcount(v0.get(), v1, v2, vr);
 
     METHOD_RETURN();
 }
@@ -406,7 +403,7 @@ inline void Redis_base::s_get(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->get(v0, vr);
+    hr = pInst->get(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -445,7 +442,7 @@ inline void Redis_base::s_getset(const v8::FunctionCallbackInfo<v8::Value>& args
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = pInst->getset(v0, v1, vr);
+    hr = pInst->getset(v0.get(), v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -462,7 +459,7 @@ inline void Redis_base::s_decr(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(obj_ptr<Buffer_base>, 0);
     OPT_ARG(int64_t, 1, 1);
 
-    hr = pInst->decr(v0, v1, vr);
+    hr = pInst->decr(v0.get(), v1, vr);
 
     METHOD_RETURN();
 }
@@ -479,7 +476,7 @@ inline void Redis_base::s_incr(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(obj_ptr<Buffer_base>, 0);
     OPT_ARG(int64_t, 1, 1);
 
-    hr = pInst->incr(v0, v1, vr);
+    hr = pInst->incr(v0.get(), v1, vr);
 
     METHOD_RETURN();
 }
@@ -497,7 +494,7 @@ inline void Redis_base::s_setBit(const v8::FunctionCallbackInfo<v8::Value>& args
     ARG(int32_t, 1);
     ARG(int32_t, 2);
 
-    hr = pInst->setBit(v0, v1, v2, vr);
+    hr = pInst->setBit(v0.get(), v1, v2, vr);
 
     METHOD_RETURN();
 }
@@ -514,7 +511,7 @@ inline void Redis_base::s_getBit(const v8::FunctionCallbackInfo<v8::Value>& args
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(int32_t, 1);
 
-    hr = pInst->getBit(v0, v1, vr);
+    hr = pInst->getBit(v0.get(), v1, vr);
 
     METHOD_RETURN();
 }
@@ -530,7 +527,7 @@ inline void Redis_base::s_exists(const v8::FunctionCallbackInfo<v8::Value>& args
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->exists(v0, vr);
+    hr = pInst->exists(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -546,7 +543,7 @@ inline void Redis_base::s_type(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->type(v0, vr);
+    hr = pInst->type(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -601,7 +598,7 @@ inline void Redis_base::s_expire(const v8::FunctionCallbackInfo<v8::Value>& args
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(int64_t, 1);
 
-    hr = pInst->expire(v0, v1, vr);
+    hr = pInst->expire(v0.get(), v1, vr);
 
     METHOD_RETURN();
 }
@@ -617,7 +614,7 @@ inline void Redis_base::s_ttl(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->ttl(v0, vr);
+    hr = pInst->ttl(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -633,7 +630,7 @@ inline void Redis_base::s_persist(const v8::FunctionCallbackInfo<v8::Value>& arg
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->persist(v0, vr);
+    hr = pInst->persist(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -648,7 +645,7 @@ inline void Redis_base::s_rename(const v8::FunctionCallbackInfo<v8::Value>& args
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = pInst->rename(v0, v1);
+    hr = pInst->rename(v0.get(), v1.get());
 
     METHOD_VOID();
 }
@@ -665,7 +662,7 @@ inline void Redis_base::s_renameNX(const v8::FunctionCallbackInfo<v8::Value>& ar
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = pInst->renameNX(v0, v1, vr);
+    hr = pInst->renameNX(v0.get(), v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -680,7 +677,7 @@ inline void Redis_base::s_sub(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(v8::Local<v8::Function>, 1);
 
-    hr = pInst->sub(v0, v1);
+    hr = pInst->sub(v0.get(), v1);
 
     METHOD_OVER(1, 1);
 
@@ -700,14 +697,14 @@ inline void Redis_base::s_unsub(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->unsub(v0);
+    hr = pInst->unsub(v0.get());
 
     METHOD_OVER(2, 2);
 
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(v8::Local<v8::Function>, 1);
 
-    hr = pInst->unsub(v0, v1);
+    hr = pInst->unsub(v0.get(), v1);
 
     METHOD_OVER(1, 1);
 
@@ -787,7 +784,7 @@ inline void Redis_base::s_get_onsuberror(const v8::FunctionCallbackInfo<v8::Valu
 
     METHOD_OVER(0, 0);
 
-    hr = pInst->get_onsuberror(vr);
+    hr = pInst->getListener("suberror", vr);
 
     METHOD_RETURN();
 }
@@ -801,7 +798,7 @@ inline void Redis_base::s_set_onsuberror(const v8::FunctionCallbackInfo<v8::Valu
 
     ARG(v8::Local<v8::Function>, 0);
 
-    hr = pInst->set_onsuberror(v0);
+    hr = pInst->setListener("suberror", v0);
 
     METHOD_VOID();
 }
@@ -818,7 +815,7 @@ inline void Redis_base::s_pub(const v8::FunctionCallbackInfo<v8::Value>& args)
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Buffer_base>, 1);
 
-    hr = pInst->pub(v0, v1, vr);
+    hr = pInst->pub(v0.get(), v1.get(), vr);
 
     METHOD_RETURN();
 }
@@ -834,7 +831,7 @@ inline void Redis_base::s_getHash(const v8::FunctionCallbackInfo<v8::Value>& arg
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->getHash(v0, vr);
+    hr = pInst->getHash(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -850,7 +847,7 @@ inline void Redis_base::s_getList(const v8::FunctionCallbackInfo<v8::Value>& arg
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->getList(v0, vr);
+    hr = pInst->getList(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -866,7 +863,7 @@ inline void Redis_base::s_getSet(const v8::FunctionCallbackInfo<v8::Value>& args
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->getSet(v0, vr);
+    hr = pInst->getSet(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -882,7 +879,7 @@ inline void Redis_base::s_getSortedSet(const v8::FunctionCallbackInfo<v8::Value>
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->getSortedSet(v0, vr);
+    hr = pInst->getSortedSet(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -898,7 +895,7 @@ inline void Redis_base::s_dump(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     ARG(obj_ptr<Buffer_base>, 0);
 
-    hr = pInst->dump(v0, vr);
+    hr = pInst->dump(v0.get(), vr);
 
     METHOD_RETURN();
 }
@@ -914,7 +911,7 @@ inline void Redis_base::s_restore(const v8::FunctionCallbackInfo<v8::Value>& arg
     ARG(obj_ptr<Buffer_base>, 1);
     OPT_ARG(int64_t, 2, 0);
 
-    hr = pInst->restore(v0, v1, v2);
+    hr = pInst->restore(v0.get(), v1.get(), v2);
 
     METHOD_VOID();
 }
